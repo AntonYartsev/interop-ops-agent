@@ -37,12 +37,22 @@ fi
 
 LOOKUP="$(val LOOKUP)"
 SODHB="$(sed -n 's/^SOD=//p' "$OUT" | tr -d '\r' | tail -n 1)"
+PATCHED=0
+[ "$SODHB" = "1 HB=1" ] && PATCHED=2
+[ "$SODHB" = "1 HB=0" ] || [ "$SODHB" = "0 HB=1" ] && PATCHED=1
 if [ "$LOOKUP" = "$EXPECTED_LOOKUP" ]; then
   res OK "IOA.LabCodeMap has $LOOKUP seed codes"
+elif [ -n "$LOOKUP" ] && [ "$LOOKUP" -eq $((EXPECTED_LOOKUP + PATCHED)) ] 2>/dev/null; then
+  res OK "IOA.LabCodeMap has $EXPECTED_LOOKUP seed codes + $PATCHED applied by the last demo run"
 else
-  res FAIL "IOA.LabCodeMap has ${LOOKUP:-?} entries, expected $EXPECTED_LOOKUP (patches applied? run ./scripts/demo.sh --reset)"
+  res FAIL "IOA.LabCodeMap has ${LOOKUP:-?} entries, expected $EXPECTED_LOOKUP seed codes (+ SOD/HB patches); run ./scripts/demo.sh --reset"
 fi
-[ "$SODHB" = "0 HB=0" ] && res OK "SOD and HB not mapped yet (cases C01/C12 start clean)" || res FAIL "SOD/HB already mapped (run ./scripts/demo.sh --reset)"
+# demo.sh resets (Setup.ResetDemo) before every run, so patches left by the last run are fine
+if [ "$SODHB" = "0 HB=0" ]; then
+  res OK "SOD and HB not mapped (clean state)"
+else
+  res OK "SOD/HB mapped by the last demo run (demo.sh resets them before the next run)"
+fi
 
 MODE_LINE="$(sed -n 's/^MODE=//p' "$OUT" | tr -d '\r' | tail -n 1)"
 MODE="${MODE_LINE%% *}"

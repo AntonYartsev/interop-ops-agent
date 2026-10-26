@@ -1,0 +1,95 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C02",
+  "match":{
+    "msh10":"C02-MSG001",
+    "prompt_sha256":"a458843b1acca3f9e13f128c4491ed43b9c1b2aa7bb16d555c3f39546bfb4d71"
+  },
+  "recorded":{
+    "profile":"openai",
+    "model":"gpt-5.4-mini",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:16Z",
+    "source":"live"
+  },
+  "turns":[
+    {
+      "role":"assistant",
+      "tool_calls":[
+        {
+          "name":"CheckCriticalValues",
+          "arguments":{
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"PCT"
+          }
+        },
+        {
+          "name":"GetBatchMessages",
+          "arguments":{
+            "limit":1,
+            "offset":0
+          }
+        },
+        {
+          "name":"GetUCUMTable",
+          "arguments":{
+          }
+        },
+        {
+          "name":"GetEventLogExcerpt",
+          "arguments":{
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"HCT"
+          }
+        }
+      ],
+      "tool_results":[
+        {
+          "name":"CheckCriticalValues",
+          "content":"{\"case_id\":\"C02\",\"critical\":[],\"critical_count\":0,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":90,\"results_not_checked\":30,\"total_messages\":30}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[],\"query\":\"PCT\"}"
+        },
+        {
+          "name":"GetBatchMessages",
+          "content":"{\"case_id\":\"C02\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C02-MSG001|P|2.5.1\\nPID|1||MRN-101100^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1100||19500310|M\\nORC|RE|ORD-61100|LAB-91100||||||20261025080000\\nOBR|1|ORD-61100|LAB-91100|CBC^Complete Blood Count^L|||20261025080000\\nOBX|1|NM|WBC^White Blood Cells^L||5.8|10*3/uL|4.5-11.0|N|||F\\nOBX|2|NM|HGB^Hemoglobin^L||13.9|g/dL|12.0-17.5|N|||F\\nOBX|3|NM|PCT^Procalcitonin^L||0.04|ng/mL|0.00-0.50|N|||F\\nOBX|4|NM|PLT^Platelets^L||237|10*3/uL|150-400|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
+        },
+        {
+          "name":"GetUCUMTable",
+          "content":"{\"ucum_conversions\":[{\"canonical_code\":\"2345-7\",\"factor\":18.0,\"from_unit\":\"mmol/L\",\"note\":\"Molar to mass conversion for Glucose (MW 180.16 g/mol)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2345-7\",\"factor\":0.0555,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Glucose\",\"to_unit\":\"mmol/L\"},{\"canonical_code\":\"2160-0\",\"factor\":0.01131,\"from_unit\":\"umol/L\",\"note\":\"Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2160-0\",\"factor\":88.4,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Creatinine\",\"to_unit\":\"umol/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"g/L\",\"note\":\"Metric prefix conversion (grams per liter to grams per deciliter)\",\"to_unit\":\"g/dL\"},{\"canonical_code\":\"*\",\"factor\":10.0,\"from_unit\":\"g/dL\",\"note\":\"Metric prefix conversion (grams per deciliter to grams per liter)\",\"to_unit\":\"g/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"mg/L\",\"note\":\"Metric prefix conversion (milligrams per liter to milligrams per deciliter)\",\"to_unit\":\"mg/dL\"}]}"
+        },
+        {
+          "name":"GetEventLogExcerpt",
+          "content":"{\"entries\":[{\"config\":\"IOA.In.CaseFile\",\"text\":\"case C02: 30 HL7 messages from /irisdev/app/cases/in/C02-pct-replaces-hct.hl7\",\"time\":\"2026-10-26 22:22:07.059\",\"type\":4},{\"config\":\"IOA.Process.Message\",\"text\":\"DTL C02: {\\\"total\\\":30,\\\"valid\\\":0,\\\"with_unmapped_code\\\":30,\\\"with_unit_mismatch\\\":0,\\\"missing_mrn_pid3\\\":0}\",\"time\":\"2026-10-26 22:22:07.088\",\"type\":4},{\"config\":\"IOA.Process.Message\",\"text\":\"rules C02: escalate (Rule A3: no rule matched) focus=unmapped_code:PCT\",\"time\":\"2026-10-26 22:22:07.09\",\"type\":4},{\"config\":\"IOA.Agent.Tools\",\"text\":\"[LIVE] case=C02 tool=CheckCriticalValues args={} ms=1\",\"time\":\"2026-10-26 22:22:13.57\",\"type\":4},{\"config\":\"IOA.Agent.Tools\",\"text\":\"[LIVE] case=C02 tool=SearchLookup args={\\\"query\\\":\\\"PCT\\\"} ms=2\",\"time\":\"2026-10-26 22:22:13.574\",\"type\":4},{\"config\":\"IOA.Agent.Tools\",\"text\":\"[LIVE] case=C02 tool=GetBatchMessages args={\\\"limit\\\":1,\\\"offset\\\":0} ms=0\",\"time\":\"2026-10-26 22:22:13.577\",\"type\":4},{\"config\":\"IOA.Agent.Tools\",\"text\":\"[LIVE] case=C02 tool=GetUCUMTable args={} ms=1\",\"time\":\"2026-10-26 22:22:13.582\",\"type\":4}],\"session_id\":4327}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[{\"canonical_name\":\"Hematocrit [Volume Fraction] of Blood\",\"expected_unit\":\"%\",\"history_median\":41.55,\"history_units\":{\"%\":100},\"local_code\":\"HCT\",\"loinc\":\"4544-3\",\"panel\":\"CBC\",\"ref_range\":\"36.0-50.0\",\"short_name\":\"Hematocrit\"}],\"query\":\"HCT\"}"
+        }
+      ]
+    },
+    {
+      "role":"assistant",
+      "content":"{\"action\":\"escalate\",\"target\":null,\"reason\":\"The batch is dominated by an unmapped local code PCT (30/30 messages) and the lookup table has no PCT match, so a safe mapping cannot be made from the evidence provided.\",\"evidence\":[\"CheckCriticalValues found 0 critical results in 30 messages.\",\"SearchLookup('PCT') returned no lookup entries.\",\"The first message contains OBX-3 PCT^Procalcitonin^L with value 0.04 ng/mL.\",\"SearchLookup('HCT') confirms HCT maps to LOINC 4544-3 with expected unit %; the ticket notes HCT is absent in this panel.\"],\"field_drift\":{\"field\":\"OBX-3\",\"found_in\":\"OBX-3 contains PCT instead of the expected CBC hematocrit code HCT in all 30 messages\",\"affected\":30,\"total\":30,\"share\":1}}"
+    }
+  ],
+  "expected":{
+    "decision":"escalate",
+    "rationale_short":"The batch is dominated by an unmapped local code PCT (30/30 messages) and the lookup table has no PCT match, so a safe mapping cannot be made from the evidence provided."
+  },
+  "usage":{
+    "prompt_tokens":4689,
+    "completion_tokens":302
+  },
+  "llm_calls":2
+}

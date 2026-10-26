@@ -62,6 +62,36 @@ else
   chmod 600 .env
 fi
 
+# --- live_env_check (begin) ---
+# Warn when IOA_LIVE in .env differs from the running container. Compose puts IOA_LIVE into the container
+# environment at creation, and that wins over the mounted .env, so an edited .env needs a recreate.
+# Reads ONLY the IOA_LIVE line of .env and ONLY the IOA_LIVE entry of the container env (never the full Env,
+# which holds the API key). Prints only the two 0/1 values. Silent when the container is not running.
+ioa_live_01() {
+  case "$(printf '%s' "$1" | tr -d '"'"'"'\r ' | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+live_env_check() { # $1 = .env file, $2 = container name; DOCKER_BIN overrides docker (tests)
+  local env_file="$1" container="$2" docker_bin="${DOCKER_BIN:-docker}" env_raw ctr_raw env_val ctr_val
+  [ -f "$env_file" ] || return 0
+  [ "$("$docker_bin" inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = "true" ] || return 0
+  env_raw="$(sed -n 's/^IOA_LIVE=//p' "$env_file" | tail -n 1)"
+  ctr_raw="$("$docker_bin" inspect --format '{{range .Config.Env}}{{if eq (index (split . "=") 0) "IOA_LIVE"}}{{.}}{{end}}{{end}}' "$container" 2>/dev/null | sed -n 's/^IOA_LIVE=//p' | tail -n 1)"
+  env_val="$(ioa_live_01 "$env_raw")"
+  ctr_val="$(ioa_live_01 "$ctr_raw")"
+  if [ "$env_val" != "$ctr_val" ]; then
+    echo "WARNING: IOA_LIVE in .env = ${env_val}, in the running container = ${ctr_val}."
+    echo "         ./run.sh recreates the container with the .env value (docker compose up -d below);"
+    echo "         without recreating: ./scripts/demo.sh --live or ./scripts/demo.sh --replay for one run."
+  fi
+  return 0
+}
+# --- live_env_check (end) ---
+CURRENT_STEP="checking IOA_LIVE in .env against the running container"
+live_env_check .env "$CONTAINER_NAME"
+
 CURRENT_STEP="reading host port configuration from .env"
 set -a
 # shellcheck disable=SC1091

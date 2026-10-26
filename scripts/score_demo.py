@@ -74,6 +74,28 @@ def judge(cid, exp, r):
             return "WRONG", "evidence lacks PID-2 and 30/30"
     return "OK", ""
 
+def mode_line(rows):
+    """Honest run mode from the rows' Mode values (MOCK / REPLAY / LIVE, or mixed); CONFIG_MODE (demo.sh) only as a note."""
+    counts = {}
+    for r in rows:
+        m = str(g(r, "mode") or "?").upper()
+        counts[m] = counts.get(m, 0) + 1
+    if not counts:
+        mode = "unknown (no rows)"
+    elif len(counts) == 1:
+        mode = next(iter(counts))
+    else:
+        mode = "mixed (" + ", ".join(f"{k} x{v}" for k, v in sorted(counts.items())) + ")"
+    calls = 0
+    for r in rows:
+        try:
+            calls += int(float(g(r, "llmCalls") or 0))
+        except (TypeError, ValueError):
+            pass
+    cfg = os.environ.get("CONFIG_MODE", "").strip()
+    note = f"; provider kind at start: {cfg}" if cfg and cfg.upper() != mode else ""
+    return f"Mode: {mode} (from Decision rows; LLM calls: {calls}{note})"
+
 def main():
     raw = sys.stdin.read().strip()
     try:
@@ -94,6 +116,7 @@ def main():
             m = re.match(r"^(C\d\d)", str(g(r, "caseId")), re.I)
             if m:
                 by[m.group(1).upper()] = r
+    print(mode_line(list(by.values())))
     hdr = f"{'Case':<4} | {'Decision (action/target/factor)':<38} | {'Src':<6} | {'Final':<14} | {'Expected':<14} | {'Verdict':<7} | Visual Trace"
     print(hdr); print("-" * len(hdr))
     ok = 0; pending = []

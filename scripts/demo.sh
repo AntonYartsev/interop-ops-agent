@@ -12,13 +12,19 @@ if [ -f .env ]; then
   set +a
 fi
 
-LIVE_FLAG=0
+LIVE_FLAG=""   # "" = keep live as seeded from env by the reset (IOA_LIVE, else 0); 1 = --live; 0 = --replay
 RESET_ONLY=0
+NO_RESET=0
 AUTOAPPROVE=1
 while [ $# -gt 0 ]; do
   case "$1" in
-    --live)
-      LIVE_FLAG=1
+    --live|--replay)
+      want=1; [ "$1" = "--replay" ] && want=0
+      if [ -n "$LIVE_FLAG" ] && [ "$LIVE_FLAG" != "$want" ]; then
+        echo "ERROR: --live and --replay are mutually exclusive" >&2
+        exit 1
+      fi
+      LIVE_FLAG=$want
       shift
       ;;
     --manual)
@@ -29,16 +35,28 @@ while [ $# -gt 0 ]; do
       RESET_ONLY=1
       shift
       ;;
+    --no-reset)
+      NO_RESET=1
+      shift
+      ;;
     -h|--help)
-      echo "Usage: $0 [--live] [--manual] [--reset]"
-      echo "  --manual Disable auto-approve: pending_review cases (e.g. C01) wait in the Workflow Inbox for a human"
-      echo "  --reset  Decision.Purge(), reload IOA.LabCodeMap from data/labcodemap.csv (drops agent patches),"
-      echo "           move leftover files from cases/in to cases/archive/<timestamp>/ (nothing is deleted), then exit"
+      echo "Usage: $0 [--live | --replay] [--manual] [--reset | --no-reset]"
+      echo "  Every run starts with a full reset: InteropOps.Setup.ResetDemo() (cancel open IOA-Reviewers Workflow tasks,"
+      echo "  Decision.Purge, reload IOA.LabCodeMap from data/labcodemap.csv, kill ^IOA.UnitFactor and ^IOA.Batch,"
+      echo "  live/record seeded from IOA_LIVE/IOA_RECORD, 0 when unset) and leftover files in cases/in are moved to"
+      echo "  cases/archive/<timestamp>/ (nothing is deleted)."
+      echo "  --live     LIVE for this run (paid API calls; needs the profile key and REPLAY unset)"
+      echo "  --replay   REPLAY for this run, whatever IOA_LIVE says"
+      echo "             Neither: the env-derived value after the reset. live is set back to 0 when the script exits."
+      echo "  --manual   Disable auto-approve: pending_review cases (e.g. C01) wait in the Workflow Inbox for a human"
+      echo "  --reset    Only do the reset, then exit"
+      echo "  --no-reset Debugging: keep agent patches (LabCodeMap, ^IOA.UnitFactor) from earlier runs;"
+      echo "             Decision rows are still purged so the table shows only this run"
       exit 0
       ;;
     *)
       echo "Unknown option: $1" >&2
-      echo "Usage: $0 [--live]" >&2
+      echo "Usage: $0 [--live | --replay] [--manual] [--reset | --no-reset]" >&2
       exit 1
       ;;
   esac
@@ -55,15 +73,7 @@ else
   ACTIVE_KEY_VAL="${OPENAI_API_KEY:-}"
 fi
 
-if [ "$LIVE_FLAG" -eq 1 ]; then
-  DEMO_MODE="LIVE"
-else
-  DEMO_MODE="REPLAY"
-fi
-
-echo "Mode: ${DEMO_MODE} (profile=${ACTIVE_PROFILE}, autoapprove=${AUTOAPPROVE})"
-
-if [ "$LIVE_FLAG" -eq 1 ] && [ -z "$ACTIVE_KEY_VAL" ]; then
+if [ "$LIVE_FLAG" = "1" ] && [ -z "$ACTIVE_KEY_VAL" ]; then
   echo "ERROR: --live requested, but ${ACTIVE_KEY_VAR} is unset. Refusing to run in LIVE mode." >&2
   exit 1
 fi
@@ -84,28 +94,44 @@ if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null || echo 
   exit 1
 fi
 
-if [ "$RESET_ONLY" -eq 1 ]; then
-  RESET_OUT="$(mktemp)"
-  printf '%s\n' \
-    'do ##class(InteropOps.Data.Decision).Purge()' \
-    'do ##class(InteropOps.Setup).LoadLabCodeMap()' \
-    'do ##class(InteropOps.Config.LLMConfig).SetLive(0)' \
-    'write "DECISIONS_LEFT=",##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) AS n FROM InteropOps_Data.Decision").%Next(),!' \
+do_reset() {
+  local out
+  out="$(printf '%s\n' \
+    'do ##class(InteropOps.Setup).ResetDemo()' \
     'halt' \
-    | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$RESET_OUT" 2>&1 || true
-  grep -E 'LABCODEMAP_' "$RESET_OUT" | tr -d '\r' || true
-  rm -f "$RESET_OUT"
-  shopt -s nullglob
-  LEFTOVER=( "${CASES_IN_HOST}"/* )
-  shopt -u nullglob
-  if [ "${#LEFTOVER[@]}" -gt 0 ]; then
-    ARCH="cases/archive/$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$ARCH"
-    mv "${LEFTOVER[@]}" "$ARCH/"
-    echo "Moved ${#LEFTOVER[@]} leftover file(s) from ${CASES_IN_HOST} to ${ARCH}"
+    | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" 2>&1 | tr -d '\r' || true)"
+  RESET_OUT="$out"
+  printf '%s\n' "$out" | grep -E '^(RESET_|LABCODEMAP_)' | tr '\n' ' ' | sed 's/ $//' || true
+  echo
+  if ! printf '%s\n' "$out" | grep -q '^RESET_DECISIONS_LEFT=0'; then
+    echo "ERROR: reset failed (InteropOps.Setup.ResetDemo missing or Decision rows left)" >&2
+    exit 1
   fi
-  echo "RESET: OK (decisions purged, LabCodeMap reloaded, LIVE off)"
+  if printf '%s\n' "$out" | grep -q '^RESET_DEV_MOCK=1'; then
+    echo "WARNING: ^IOA.Dev(\"mock_base_url\") is set: agent cases run against the dev mock (MOCK)" >&2
+  fi
+  shopt -s nullglob
+  local leftover=( "${CASES_IN_HOST}"/* )
+  shopt -u nullglob
+  if [ "${#leftover[@]}" -gt 0 ]; then
+    local arch
+    arch="cases/archive/$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$arch"
+    mv "${leftover[@]}" "$arch/"
+    echo "Moved ${#leftover[@]} leftover file(s) from ${CASES_IN_HOST} to ${arch}"
+  fi
+}
+
+if [ "$RESET_ONLY" -eq 1 ]; then
+  do_reset
+  echo "RESET: OK (open review tasks cancelled, decisions purged, LabCodeMap reloaded, ^IOA.UnitFactor and ^IOA.Batch cleared, $(printf '%s\n' "$RESET_OUT" | sed -n 's/^RESET_FLAGS_FROM_ENV=//p' | head -n 1))"
   exit 0
+fi
+
+if [ "$NO_RESET" -eq 1 ]; then
+  echo "Reset: skipped (--no-reset; patches from earlier runs are kept)"
+else
+  do_reset
 fi
 
 TMP_OUT="$(mktemp)"
@@ -125,7 +151,7 @@ printf '%s\n' \
   'halt' \
   | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$TMP_OUT" 2>&1 || true
 
-if [ "$LIVE_FLAG" -eq 1 ] && ! grep -q "KEY_PRESENT=1" "$TMP_OUT"; then
+if [ "$LIVE_FLAG" = "1" ] && ! grep -q "KEY_PRESENT=1" "$TMP_OUT"; then
   echo "ERROR: --live requested, but active profile key (${ACTIVE_KEY_VAR}) is unset in IRIS. Refusing LIVE mode." >&2
   exit 1
 fi
@@ -148,18 +174,69 @@ fi
 
 printf '%s\n' \
   'do ##class(InteropOps.Data.Decision).Purge()' \
-  "do ##class(InteropOps.Config.LLMConfig).SetLive(${LIVE_FLAG})" \
+  "$( [ -n "$LIVE_FLAG" ] && echo "do ##class(InteropOps.Config.LLMConfig).SetLive(${LIVE_FLAG})" )" \
   "do ##class(InteropOps.Config.LLMConfig).SetAutoApprove(${AUTOAPPROVE})" \
   'write "ACTIVE_LLM_MODE=",##class(InteropOps.Config.LLMConfig).Mode(),!' \
   'write "AUTOAPPROVE=",##class(InteropOps.Config.LLMConfig).AutoApprove(),!' \
+  'write "ACTIVE_KIND=",##class(InteropOps.Agent.ProviderFactory).Kind(),!' \
+  'write "ACTIVE_MODEL=",##class(InteropOps.Config.LLMConfig).Model(),!' \
+  'write "ACTIVE_RECORD=",##class(InteropOps.Config.LLMConfig).RecordEnabled(),!' \
   'halt' \
   | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$TMP_OUT" 2>&1 || true
 
 ACTIVE_LLM_MODE="$(sed -n 's/^ACTIVE_LLM_MODE=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
-if [ "$LIVE_FLAG" -eq 1 ] && [ "$ACTIVE_LLM_MODE" != "LIVE" ]; then
+if [ "$LIVE_FLAG" = "1" ] && [ "$ACTIVE_LLM_MODE" != "LIVE" ]; then
   echo "ERROR: --live requested, but resolved mode is ${ACTIVE_LLM_MODE:-REPLAY} (check ${ACTIVE_KEY_VAR} and REPLAY env)." >&2
   exit 1
 fi
+ACTIVE_KIND="$(sed -n 's/^ACTIVE_KIND=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
+ACTIVE_MODEL="$(sed -n 's/^ACTIVE_MODEL=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
+ACTIVE_RECORD="$(sed -n 's/^ACTIVE_RECORD=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
+# What IRIS itself reports (not what the flags asked for), so an accidental MOCK or LIVE is visible
+echo "IRIS Mode(): ${ACTIVE_LLM_MODE:-?}  provider kind (ProviderFactory.Kind()): ${ACTIVE_KIND:-?}  record: ${ACTIVE_RECORD:-?}"
+if [ -z "$ACTIVE_KIND" ] || [ -z "$ACTIVE_LLM_MODE" ]; then
+  echo "WARNING: could not read Mode()/Kind() from IRIS (session output in ${TMP_OUT})." >&2
+elif [ "$ACTIVE_KIND" = "MOCK" ]; then
+  echo "WARNING: provider kind is MOCK (^IOA.Dev(\"mock_base_url\") is set): the agent talks to a local mock, not to cassettes or a real LLM." >&2
+  echo "         ResetDemo clears ^IOA.Dev; it was skipped (--no-reset) or the override was set after it." >&2
+fi
+case "$LIVE_FLAG" in
+  1) LIVE_SRC="--live" ;;
+  0) LIVE_SRC="--replay" ;;
+  *) LIVE_SRC="env (IOA_LIVE) after reset" ;;
+esac
+if [ "$ACTIVE_LLM_MODE" = "LIVE" ]; then
+  # Estimate only: token usage recorded in the cassettes x assumed prices (PRICE_IN / PRICE_OUT, USD per 1M tokens)
+  EST_USD="$(PRICE_IN="${PRICE_IN:-0.75}" PRICE_OUT="${PRICE_OUT:-4.50}" python3 - "$EXPECTED_REPLAY_DIR" <<'PY' 2>/dev/null || echo "?"
+import glob, json, os, sys
+tin = tout = 0
+for f in glob.glob(os.path.join(sys.argv[1], "C*.json")):
+    try:
+        u = json.load(open(f)).get("usage") or {}
+    except Exception:
+        continue
+    tin += int(u.get("prompt_tokens") or 0)
+    tout += int(u.get("completion_tokens") or 0)
+print("%.2f (%dk in / %dk out tokens at $%s / $%s per 1M, assumed)" % (
+    (tin * float(os.environ["PRICE_IN"]) + tout * float(os.environ["PRICE_OUT"])) / 1e6,
+    round(tin / 1000), round(tout / 1000), os.environ["PRICE_IN"], os.environ["PRICE_OUT"]))
+PY
+)"
+  echo "##################################################################"
+  echo "##                                                              ##"
+  echo "##   L I V E   -   real, paid LLM API calls                     ##"
+  echo "##                                                              ##"
+  echo "##################################################################"
+  echo "LIVE: will call ${ACTIVE_MODEL:-?} (${ACTIVE_PROFILE}), est. cost ~\$${EST_USD} (estimate, not a quote)"
+  echo "LIVE: source=${LIVE_SRC}, record=${ACTIVE_RECORD:-0}"
+  if [ -z "$LIVE_FLAG" ] && [ -t 0 ]; then
+    echo "LIVE comes from IOA_LIVE, not from --live. Ctrl-C within 5 s to abort (or use --replay)."
+    sleep 5
+  fi
+else
+  echo "=== REPLAY: no LLM API calls (cassettes in ${EXPECTED_REPLAY_DIR}/; mode=${ACTIVE_LLM_MODE:-REPLAY}, source=${LIVE_SRC}) ==="
+fi
+echo "Mode: ${ACTIVE_KIND:-${ACTIVE_LLM_MODE:-REPLAY}} (provider kind; profile=${ACTIVE_PROFILE}, autoapprove=${AUTOAPPROVE})"
 
 mkdir -p "$CASES_IN_HOST"
 
@@ -185,7 +262,7 @@ fetch_report_json() {
 check_all_cases_present() {
   local json_payload="$1"
   if command -v python3 >/dev/null 2>&1; then
-    REPORT_JSON_PAYLOAD="$json_payload" CASE_IDS_CSV="$CASE_IDS_CSV" python3 - << 'PYEOF'
+    REPORT_JSON_PAYLOAD="$json_payload" CASE_IDS_CSV="$CASE_IDS_CSV" AUTOAPPROVE="$AUTOAPPROVE" python3 - << 'PYEOF'
 import json
 import os
 import re
@@ -216,9 +293,13 @@ elif isinstance(data, dict):
                 rows.append(item)
 
 seen = set()
+auto = os.environ.get("AUTOAPPROVE", "0") == "1"
 for r in rows:
     if not isinstance(r, dict):
         continue
+    status = str(r.get("FinalStatus") or r.get("finalStatus") or "").lower()
+    if auto and status == "pending_review":
+        continue  # auto-approve still running: the human:auto row is not written yet
     cid = str(
         r.get("caseId")
         or r.get("CaseId")
@@ -271,7 +352,7 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
 done
 
 if command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$REPORT_JSON" | WEB_PORT="$WEB_PORT" NS="$NS" EXPECTED_MAP_FILE="$EXPECTED_MAP_FILE" python3 "${SCRIPT_DIR}/score_demo.py"
+  printf '%s' "$REPORT_JSON" | WEB_PORT="$WEB_PORT" NS="$NS" EXPECTED_MAP_FILE="$EXPECTED_MAP_FILE" CONFIG_MODE="${ACTIVE_KIND:-}" python3 "${SCRIPT_DIR}/score_demo.py"
 else
   echo "python3 not found; raw ReportJSON:"
   echo "$REPORT_JSON"

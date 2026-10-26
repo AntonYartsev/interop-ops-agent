@@ -333,6 +333,159 @@ ClassMethod LoadLabCodeMap(file As %String = "/irisdev/app/data/labcodemap.csv")
     quit $$$OK
 }
 
+/// Full demo reset, run by scripts/demo.sh before every run (demo.sh --no-reset skips it).
+/// Order:
+///   1. Open Workflow tasks of role IOA-Reviewers are cancelled (CancelOpenTasks) and the waiting
+///      IOA.Process.Message instances are given time to finish. A cancelled task never approves, so the BPL
+///      never calls IOA.Lookup.Apply for it (the BPL only applies on %Action="Approve").
+///   2. InteropOps.Data.Decision rows (Purge; also removes the rows the cancelled BPLs wrote in step 1)
+///   3. IOA.LabCodeMap: reloaded from data/labcodemap.csv (drops patch_mapping applied by IOA.Lookup.Apply)
+///   4. ^IOA.UnitFactor: convert_unit factors written by IOA.Lookup.Apply (read by Rules.LabToCanonical)
+///   5. ^IOA.Batch: raw HL7 of the last batch per case (the BPL rewrites it at ingest; Apply reprocesses from it)
+///   6. live and record: seeded from env (IOA_LIVE, IOA_RECORD; process env, else .env), 0 when not set
+///      (LLMConfig.SeedFlagsFromEnv). demo.sh --live / --replay then set live for the run.
+///   7. ^IOA.Budget killed (LIVE call counter; Agent.Operation refuses LIVE calls over BUDGETCALLS, so a
+///      leftover count would turn a LIVE demo into budget_cap escalations). The old count is printed.
+///   8. ^IOA.Dev killed (dev overrides; a leftover mock_base_url silently makes the run MOCK, cassette_dir
+///      redirects cassettes). Whether mock_base_url was set is printed before the kill.
+///   9. ^IOA.Config("dataDir") / ("casesDir") killed (Util.Paths defaults apply); ^IOA.Config("autoapprove")
+///      reset to its default: IOA_AUTOAPPROVE (process env, else .env), 0 when not set. demo.sh then sets
+///      autoapprove for the run (default 1, --manual 0).
+/// Kept on purpose: ^IOA.Cache (history statistics cache, keyed by file mtime/size), the rest of ^IOA.Config.
+/// Prints RESET_* lines; messages still queued are reported, not removed.
+ClassMethod ResetDemo() As %Status
+{
+    set nTasks = ..CancelOpenTasks("IOA-Reviewers", .nFallback, .nOpenBP)
+    write "RESET_TASKS_CANCELLED=", nTasks, " RESET_TASKS_DISCARDED=", nFallback, " RESET_WAITING_BP=", nOpenBP, !
+    set sc = ##class(InteropOps.Data.Decision).Purge()
+    write "RESET_DECISIONS_PURGED=", $select($$$ISOK(sc):1, 1:0), !
+    set sc2 = ..LoadLabCodeMap()
+    set n = 0, k = ""
+    for {
+        set k = $order(^IOA.UnitFactor(k))
+        quit:(k = "")
+        set k2 = ""
+        for {
+            set k2 = $order(^IOA.UnitFactor(k, k2))
+            quit:(k2 = "")
+            set n = n + 1
+        }
+    }
+    kill ^IOA.UnitFactor
+    write "RESET_UNITFACTOR_KILLED=", n, !
+    set n = 0, k = ""
+    for {
+        set k = $order(^IOA.Batch(k))
+        quit:(k = "")
+        set n = n + 1
+    }
+    kill ^IOA.Batch
+    write "RESET_BATCH_KILLED=", n, !
+    set seeded = ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv()
+    write "RESET_LIVE=", +$get(^IOA.Config("live")), " MODE=", ##class(InteropOps.Config.LLMConfig).Mode(), !
+    write "RESET_RECORD=", ##class(InteropOps.Config.LLMConfig).RecordEnabled(), !
+    write "RESET_FLAGS_FROM_ENV=", seeded, !
+    write "RESET_DEV_MOCK=", $select($zstrip($get(^IOA.Dev("mock_base_url")), "<>W") '= "":1, 1:0), !
+    kill ^IOA.Dev
+    write "RESET_BUDGET_CALLS_KILLED=", +$get(^IOA.Budget("calls")), !
+    kill ^IOA.Budget
+    kill ^IOA.Config("dataDir"), ^IOA.Config("casesDir")
+    set autoVal = $zconvert($zstrip($SYSTEM.Util.GetEnviron("IOA_AUTOAPPROVE"), "<>W"), "L")
+    if (autoVal = "") {
+        do ..ReadDotEnv(.envMap)
+        set autoVal = $zconvert($zstrip($get(envMap("IOA_AUTOAPPROVE")), "<>W"), "L")
+    }
+    set ^IOA.Config("autoapprove") = $select((autoVal = "1") || (autoVal = "true") || (autoVal = "yes"):1, 1:0)
+    write "RESET_AUTOAPPROVE=", ^IOA.Config("autoapprove"), " RESET_PATHS=default", !
+    write "RESET_KIND=", ##class(InteropOps.Agent.ProviderFactory).Kind(), !
+    set q = 0
+    try {
+        set rs = ##class(%ResultSet).%New("Ens.Queue:Enumerate")
+        do rs.Execute()
+        while rs.Next() { set q = q + rs.Get("Count") }
+    } catch ex {
+        set q = "?"
+    }
+    write "RESET_QUEUED=", q, !
+    write "RESET_OPEN_TASKS=", ..CountOpenTasks("IOA-Reviewers"), !
+    set rs3 = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM InteropOps_Data.Decision")
+    write "RESET_DECISIONS_LEFT=", $select(rs3.%Next():rs3.%GetData(1), 1:"?"), !
+    quit sc
+}
+
+/// Open (not complete) Workflow tasks of role pRole: their TaskResponse ids in pIds(id)=""
+ClassMethod OpenTaskIds(pRole As %String, Output pIds) As %Integer
+{
+    kill pIds
+    set n = 0
+    set rs = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM EnsLib_Workflow.TaskResponse WHERE %Status <> 'Completed'")
+    while rs.%Next() {
+        set t = ##class(EnsLib.Workflow.TaskResponse).%OpenId(rs.%GetData(1))
+        continue:'$isobject(t)
+        set st = t.%TaskStatus
+        continue:st.IsComplete
+        continue:(('$isobject(st.Role)) || (st.Role.Name '= pRole))
+        set pIds(rs.%GetData(1)) = "", n = n + 1
+    }
+    quit n
+}
+
+ClassMethod CountOpenTasks(pRole As %String = "IOA-Reviewers") As %String
+{
+    try { set n = ..OpenTaskIds(pRole, .ids) } catch ex { set n = "?" }
+    quit n
+}
+
+/// Cancel every open Workflow task of role pRole with the standard engine API.
+/// EnsLib.Workflow.Engine.CompleteTask(task, "") is the cancel path of the engine (empty action):
+/// %Action and %Status become the engine's "cancelled" value and the task goes back to the waiting BPL as its
+/// deferred response. IOA.Process.Message applies only when %Action = "Approve", so nothing is applied.
+/// If the deferred response cannot be delivered (the BPL is gone), EnsLib.Workflow.Engine.%CancelRequest marks
+/// the task discarded and complete (pFallback counts those). Then waits up to pWaitSec for the BPL instances
+/// that were waiting on the tasks; pOpenBP = how many are still not completed.
+ClassMethod CancelOpenTasks(pRole As %String = "IOA-Reviewers", Output pFallback As %Integer, Output pOpenBP As %Integer, pWaitSec As %Integer = 15) As %Integer
+{
+    set (n, pFallback, pOpenBP) = 0
+    try {
+        do ..OpenTaskIds(pRole, .ids)
+    } catch ex {
+        write "RESET_TASKS_ERROR=", ex.DisplayString(), !
+        quit
+    }
+    set id = ""
+    for {
+        set id = $order(ids(id))
+        quit:(id = "")
+        set t = ##class(EnsLib.Workflow.TaskResponse).%OpenId(id)
+        continue:'$isobject(t)
+        set tok = t.%TaskStatus.ResponseToken
+        set hdr = $select(tok '= "":##class(Ens.MessageHeader).%OpenId($piece(tok, "|", 1)), 1:"")
+        if $isobject(hdr) && (hdr.BusinessProcessId '= "") set bps(hdr.BusinessProcessId) = ""
+        set sc = ##class(EnsLib.Workflow.Engine).CompleteTask(t, "")
+        if $$$ISERR(sc) {
+            set t = ##class(EnsLib.Workflow.TaskResponse).%OpenId(id)
+            set sc = $select($isobject(t) && $isobject(t.%TaskStatus.Request):##class(EnsLib.Workflow.Engine).%CancelRequest(t.%TaskStatus.Request), 1:$$$ERROR($$$GeneralError, "no request"))
+            if $$$ISOK(sc) set pFallback = pFallback + 1
+        }
+        if $$$ISOK(sc) set n = n + 1
+        if $$$ISERR(sc) write "RESET_TASK_CANCEL_ERROR=", id, " ", $system.Status.GetErrorText(sc), !
+    }
+    // give the BPLs time to take the cancelled response and finish (they write a final row, purged next)
+    set deadline = $zhorolog + pWaitSec
+    for {
+        set pOpenBP = 0, bp = ""
+        for {
+            set bp = $order(bps(bp))
+            quit:(bp = "")
+            set o = ##class(Ens.BusinessProcess).%OpenId(bp)
+            if $isobject(o) && 'o.%IsCompleted set pOpenBP = pOpenBP + 1
+        }
+        quit:((pOpenBP = 0) || ($zhorolog > deadline))
+        hang 0.5
+    }
+    quit n
+}
+
 /// Import+compile src (recursive, flags "ck"), sync environment to ^IOA.Config,
 /// load IOA.LabCodeMap lookup table, verify DeepSeeEnabled on /csp/irisapp,
 /// ensure IOA-Reviewers role and reviewer user, ensure Interoperability and AutoStart
@@ -355,8 +508,8 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
         quit sc
     }
 
-    do ##class(InteropOps.Config.LLMConfig).SetLive(0)
     do ..SyncEnvToGlobal()
+    write "FLAGS_FROM_ENV=", ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv(), !
     do ..LoadLabCodeMap()
 
     set casesInDir = ##class(InteropOps.Config.LLMConfig).CasesIn()
@@ -440,6 +593,7 @@ ClassMethod Reload(pSrcDir As %String = "/irisdev/app/src") As %Status
     }
 
     do ..SyncEnvToGlobal()
+    write "FLAGS_FROM_ENV=", ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv(), !
     do ..LoadLabCodeMap()
     do ..EnsureReviewer()
 

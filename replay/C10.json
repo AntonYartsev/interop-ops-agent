@@ -1,0 +1,85 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C10",
+  "match":{
+    "msh10":"C10-MSG001",
+    "prompt_sha256":"699aed89bf267e68a0f45d15b8a791acfb28d615b4f7db674b8db99735544c09"
+  },
+  "recorded":{
+    "profile":"openai",
+    "model":"gpt-5.4-mini",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:31Z",
+    "source":"live"
+  },
+  "turns":[
+    {
+      "role":"assistant",
+      "tool_calls":[
+        {
+          "name":"CheckCriticalValues",
+          "arguments":{
+          }
+        },
+        {
+          "name":"GetBatchMessages",
+          "arguments":{
+            "limit":2,
+            "offset":0
+          }
+        },
+        {
+          "name":"GetEventLogExcerpt",
+          "arguments":{
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"PID-3"
+          }
+        },
+        {
+          "name":"GetUCUMTable",
+          "arguments":{
+          }
+        }
+      ],
+      "tool_results":[
+        {
+          "name":"CheckCriticalValues",
+          "content":"{\"case_id\":\"C10\",\"critical\":[],\"critical_count\":0,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":90,\"results_not_checked\":60,\"total_messages\":30}"
+        },
+        {
+          "name":"GetBatchMessages",
+          "content":"{\"case_id\":\"C10\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C10-MSG001|P|2.5.1\\nPID|1|MRN-101900^^^REGIONAL_LAB^MR|||SYNTHETIC^PATIENT1900||19500210|M\\nORC|RE|ORD-61900|LAB-91900||||||20261025080000\\nOBR|1|ORD-61900|LAB-91900|BMP^Basic Metabolic Panel^L|||20261025080000\\nOBX|1|NM|GLU^Glucose^L||4.9|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||140.9|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.99|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||90|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||16|mg/dL|7-20|N|||F\\n\"},{\"index\":1,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080200||ORU^R01^ORU_R01|C10-MSG002|P|2.5.1\\nPID|1|MRN-101901^^^REGIONAL_LAB^MR|||SYNTHETIC^PATIENT1901||19510311|F\\nORC|RE|ORD-61901|LAB-91901||||||20261025080200\\nOBR|1|ORD-61901|LAB-91901|BMP^Basic Metabolic Panel^L|||20261025080200\\nOBX|1|NM|GLU^Glucose^L||5|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||143.2|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.05|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||61|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||15|mg/dL|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
+        },
+        {
+          "name":"GetEventLogExcerpt",
+          "content":"{\"entries\":[{\"config\":\"IOA.In.CaseFile\",\"text\":\"case C10: 30 HL7 messages from /irisdev/app/cases/in/C10-mrn-pid2.hl7\",\"time\":\"2026-10-26 22:22:07.301\",\"type\":4},{\"config\":\"IOA.Process.Message\",\"text\":\"DTL C10: {\\\"total\\\":30,\\\"valid\\\":0,\\\"with_unmapped_code\\\":0,\\\"with_unit_mismatch\\\":0,\\\"missing_mrn_pid3\\\":30}\",\"time\":\"2026-10-26 22:22:07.394\",\"type\":4},{\"config\":\"IOA.Process.Message\",\"text\":\"rules C10: escalate (Rule A3: no rule matched) focus=empty_required_field:PID-3\",\"time\":\"2026-10-26 22:22:07.397\",\"type\":4},{\"config\":\"IOA.Agent.Tools\",\"text\":\"[LIVE] case=C10 tool=CheckCriticalValues args={} ms=1\",\"time\":\"2026-10-26 22:22:29.851\",\"type\":4},{\"config\":\"IOA.Agent.Tools\",\"text\":\"[LIVE] case=C10 tool=GetBatchMessages args={\\\"limit\\\":2,\\\"offset\\\":0} ms=0\",\"time\":\"2026-10-26 22:22:29.854\",\"type\":4}],\"session_id\":4472}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[],\"query\":\"PID-3\"}"
+        },
+        {
+          "name":"GetUCUMTable",
+          "content":"{\"ucum_conversions\":[{\"canonical_code\":\"2345-7\",\"factor\":18.0,\"from_unit\":\"mmol/L\",\"note\":\"Molar to mass conversion for Glucose (MW 180.16 g/mol)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2345-7\",\"factor\":0.0555,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Glucose\",\"to_unit\":\"mmol/L\"},{\"canonical_code\":\"2160-0\",\"factor\":0.01131,\"from_unit\":\"umol/L\",\"note\":\"Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2160-0\",\"factor\":88.4,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Creatinine\",\"to_unit\":\"umol/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"g/L\",\"note\":\"Metric prefix conversion (grams per liter to grams per deciliter)\",\"to_unit\":\"g/dL\"},{\"canonical_code\":\"*\",\"factor\":10.0,\"from_unit\":\"g/dL\",\"note\":\"Metric prefix conversion (grams per deciliter to grams per liter)\",\"to_unit\":\"g/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"mg/L\",\"note\":\"Metric prefix conversion (milligrams per liter to milligrams per deciliter)\",\"to_unit\":\"mg/dL\"}]}"
+        }
+      ]
+    },
+    {
+      "role":"assistant",
+      "content":"{\"action\":\"escalate\",\"target\":null,\"reason\":\"All 30 messages are missing required PID-3 (MRN) while the valid MRN format appears in sibling PID-2, which is a structural field placement problem rather than a mapping/unit issue.\",\"evidence\":[\"CheckCriticalValues found 0 critical results in the batch.\",\"DTL log reports missing_mrn_pid3: 30 across 30 messages.\",\"Sample messages show PID-3 empty/absent for MRN while PID-2 contains the MRN value (e.g., C10-MSG001 PID-2=MRN-101900^^^REGIONAL_LAB^MR).\"],\"field_drift\":{\"field\":\"PID-3\",\"found_in\":\"PID-2\",\"affected\":30,\"total\":30,\"share\":1}}"
+    }
+  ],
+  "expected":{
+    "decision":"escalate",
+    "rationale_short":"All 30 messages are missing required PID-3 (MRN) while the valid MRN format appears in sibling PID-2, which is a structural field placement problem rather than a mapping/unit issue."
+  },
+  "usage":{
+    "prompt_tokens":4702,
+    "completion_tokens":262
+  },
+  "llm_calls":2
+}

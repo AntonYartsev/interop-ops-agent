@@ -7,7 +7,8 @@ Property MSH10 As %String(MAXLEN = 64);
 
 Property SessionId As %Integer;
 
-Property Mode As %String(VALUELIST = ",REPLAY,LIVE");
+/// Provider kind that made the decision: MOCK (dev mock, ^IOA.Dev("mock_base_url")), REPLAY (cassettes) or LIVE.
+Property Mode As %String(VALUELIST = ",MOCK,REPLAY,LIVE");
 
 /// human:auto = approved automatically by the demo auto-approver (IOA_AUTOAPPROVE / LLMConfig.AutoApprove()).
 Property Source As %String(VALUELIST = ",rules,agent,human,human:auto");
@@ -72,6 +73,24 @@ ClassMethod GetDynVal(pObj As %DynamicObject, pKey1 As %String, pKey2 As %String
     quit ""
 }
 
+/// 1 if this row comes from a dev-mock run: GateDetail.provider_kind="MOCK" (or agent.provider_kind),
+/// else (rules rows: "none (rules)") whether the dev mock override ^IOA.Dev("mock_base_url") is set.
+ClassMethod IsMockRun(pGateDetail As %String = "") As %Boolean
+{
+    set kind = ""
+    if $zstrip(pGateDetail, "<>W") '= "" {
+        try {
+            set gd = {}.%FromJSON(pGateDetail)
+            set kind = $zconvert(gd."provider_kind", "U")
+            if (kind = "") && $isobject(gd.agent) { set kind = $zconvert(gd.agent."provider_kind", "U") }
+        } catch ex {
+            set kind = ""
+        }
+    }
+    if $listfind($listbuild("MOCK", "REPLAY", "LIVE"), kind) { quit (kind = "MOCK") }
+    quit ($zstrip($get(^IOA.Dev("mock_base_url")), "<>W") '= "")
+}
+
 /// Record a decision row from a %DynamicObject and save it.
 ClassMethod Record(pData As %DynamicObject, Output pId As %Integer) As %Status
 {
@@ -99,8 +118,13 @@ ClassMethod Record(pData As %DynamicObject, Output pId As %Integer) As %Status
     }
 
     set modeVal = $zconvert(..GetDynVal(pData, "Mode", "mode"), "U")
-    if (modeVal '= "REPLAY") && (modeVal '= "LIVE") {
+    if (modeVal '= "MOCK") && (modeVal '= "REPLAY") && (modeVal '= "LIVE") {
         set modeVal = ##class(InteropOps.Config.LLMConfig).Mode()
+    }
+    // Honest mode: callers pass LLMConfig.Mode() (REPLAY|LIVE); a dev-mock run is MOCK
+    // (GateDetail.provider_kind=MOCK, or ^IOA.Dev("mock_base_url") set, as in ProviderFactory.Kind()).
+    if (modeVal = "REPLAY") && ..IsMockRun(..GetDynVal(pData, "gateDetail", "GateDetail")) {
+        set modeVal = "MOCK"
     }
     set rec.Mode = modeVal
 

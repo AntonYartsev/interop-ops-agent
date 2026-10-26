@@ -1,0 +1,26 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C12",
+  "match":{
+    "msh10":"C12-MSG001",
+    "prompt_sha256":"18fe70d2d496e3288402e4b2c9a92874f24d432c1e3735abb1e267fda62a5869"
+  },
+  "recorded":{
+    "profile":"rules",
+    "model":"none",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:07Z",
+    "source":"rules"
+  },
+  "turns":[
+  ],
+  "expected":{
+    "decision":"patch_mapping",
+    "rationale_short":"Rule A2a: LOINC alt code in OBX-3.4"
+  },
+  "usage":{
+    "prompt_tokens":0,
+    "completion_tokens":0
+  },
+  "llm_calls":0
+}

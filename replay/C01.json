@@ -1,0 +1,86 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C01",
+  "match":{
+    "msh10":"C01-MSG001",
+    "prompt_sha256":"ec1043b41cec50813f8291e7bca4d724f4aa4cf958588dfea0961e8e04f0e891"
+  },
+  "recorded":{
+    "profile":"openai",
+    "model":"gpt-5.4-mini",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:11Z",
+    "source":"live"
+  },
+  "turns":[
+    {
+      "role":"assistant",
+      "tool_calls":[
+        {
+          "name":"CheckCriticalValues",
+          "arguments":{
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"SOD"
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"NA"
+          }
+        },
+        {
+          "name":"GetUCUMTable",
+          "arguments":{
+          }
+        },
+        {
+          "name":"GetBatchMessages",
+          "arguments":{
+            "limit":1,
+            "offset":0
+          }
+        }
+      ],
+      "tool_results":[
+        {
+          "name":"CheckCriticalValues",
+          "content":"{\"case_id\":\"C01\",\"critical\":[],\"critical_count\":0,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":60,\"results_not_checked\":90,\"total_messages\":30}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[{\"canonical_name\":\"Sodium [Moles/volume] in Serum or Plasma\",\"expected_unit\":\"mmol/L\",\"history_median\":140.15,\"history_units\":{\"mmol/L\":100},\"local_code\":\"NA\",\"loinc\":\"2951-2\",\"panel\":\"BMP\",\"ref_range\":\"135-145\",\"short_name\":\"Sodium\"}],\"query\":\"SOD\"}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[{\"canonical_name\":\"Sodium [Moles/volume] in Serum or Plasma\",\"expected_unit\":\"mmol/L\",\"history_median\":140.15,\"history_units\":{\"mmol/L\":100},\"local_code\":\"NA\",\"loinc\":\"2951-2\",\"panel\":\"BMP\",\"ref_range\":\"135-145\",\"short_name\":\"Sodium\"}],\"query\":\"NA\"}"
+        },
+        {
+          "name":"GetUCUMTable",
+          "content":"{\"ucum_conversions\":[{\"canonical_code\":\"2345-7\",\"factor\":18.0,\"from_unit\":\"mmol/L\",\"note\":\"Molar to mass conversion for Glucose (MW 180.16 g/mol)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2345-7\",\"factor\":0.0555,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Glucose\",\"to_unit\":\"mmol/L\"},{\"canonical_code\":\"2160-0\",\"factor\":0.01131,\"from_unit\":\"umol/L\",\"note\":\"Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2160-0\",\"factor\":88.4,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Creatinine\",\"to_unit\":\"umol/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"g/L\",\"note\":\"Metric prefix conversion (grams per liter to grams per deciliter)\",\"to_unit\":\"g/dL\"},{\"canonical_code\":\"*\",\"factor\":10.0,\"from_unit\":\"g/dL\",\"note\":\"Metric prefix conversion (grams per deciliter to grams per liter)\",\"to_unit\":\"g/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"mg/L\",\"note\":\"Metric prefix conversion (milligrams per liter to milligrams per deciliter)\",\"to_unit\":\"mg/dL\"}]}"
+        },
+        {
+          "name":"GetBatchMessages",
+          "content":"{\"case_id\":\"C01\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C01-MSG001|P|2.5.1\\nPID|1||MRN-101000^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1000||19500210|M\\nORC|RE|ORD-61000|LAB-91000||||||20261025080000\\nOBR|1|ORD-61000|LAB-91000|BMP^Basic Metabolic Panel^L|||20261025080000\\nOBX|1|NM|GLU^Glucose^L||5.2|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|SOD^Sodium, serum/plasma^L||138.1|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.22|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||73|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||13|mg/dL|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
+        }
+      ]
+    },
+    {
+      "role":"assistant",
+      "content":"{\"action\":\"patch_mapping\",\"target\":{\"code\":\"SOD\",\"loinc\":\"2951-2\"},\"reason\":\"SOD is an unknown local code for sodium with the same expected unit mmol/L and matching historical median/range as the existing NA sodium mapping, and there are no critical results.\",\"evidence\":[\"SearchLookup found NA as Sodium [Moles/volume] in Serum or Plasma mapped to LOINC 2951-2 with expected unit mmol/L and reference range 135-145\",\"SearchLookup for SOD returned the same sodium analyte match with expected unit mmol/L and history median 140.15\",\"Batch message C01-MSG001 shows OBX-2 SOD^Sodium, serum/plasma^L with value 138.1 mmol/L, which fits the sodium range and unit\",\"CheckCriticalValues reported 0 critical results in the batch\"],\"field_drift\":null}"
+    }
+  ],
+  "expected":{
+    "decision":"patch_mapping",
+    "rationale_short":"SOD is an unknown local code for sodium with the same expected unit mmol/L and matching historical median/range as the existing NA sodium mapping, and there are no critical results."
+  },
+  "usage":{
+    "prompt_tokens":4343,
+    "completion_tokens":281
+  },
+  "llm_calls":2
+}

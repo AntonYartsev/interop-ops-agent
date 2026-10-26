@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Cross-check scripts/score_demo.py against the spike's frozen scorer (score.py, prereg.md).
 
-Reads spike-v2-message-path/results/Agent.json and A.json (read only), converts every case into a row in
+Reads Agent.json and A.json (the spike's run results) from tests/fixtures/ (read-only copies of
+spike-v2-message-path/results/, sha256 in tests/fixtures/README.md), converts every case into a row in
 Decision.ReportJSON format (CaseId, MSH10 like C06-MSG031, Source, Action, Target, Factor, Reason, GateResult,
 GateDetail, Evidence, FinalStatus, ...), pipes the rows through score_demo.py and asserts the spike's numbers:
 Agent 10/12, A 8/12. Both Target styles are checked: JSON object text and plain text ("SOD->2951-2").
-Usage: python3 scripts/test_score.py [--spike DIR] [-v]     (default DIR: $SPIKE_DIR or ../spike-v2-message-path)
+Usage: python3 scripts/test_score.py [--fixtures DIR | --spike SPIKE_DIR] [-v]
+  default: tests/fixtures/ (no spike repo needed). --fixtures DIR or env TEST_SCORE_FIXTURES: a directory with
+  Agent.json and A.json. --spike SPIKE_DIR: optional, read SPIKE_DIR/results/ instead (env SPIKE_DIR is used
+  only together with --spike, so a stale SPIKE_DIR never changes the default).
 Exit 0 if every check matches, 1 on mismatch, 2 if inputs are missing. Writes nothing, makes no LLM calls."""
 import json, os, re, subprocess, sys
 
@@ -87,13 +91,18 @@ def probes(run):
     return out
 
 def main(argv):
-    spike = os.environ.get("SPIKE_DIR") or os.path.join(os.path.dirname(ROOT), "spike-v2-message-path")
+    src = os.environ.get("TEST_SCORE_FIXTURES") or os.path.join(ROOT, "tests", "fixtures")
+    if "--fixtures" in argv:
+        src = argv[argv.index("--fixtures") + 1]
     if "--spike" in argv:
-        spike = argv[argv.index("--spike") + 1]
+        i = argv.index("--spike")
+        spike = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("-") else os.environ.get("SPIKE_DIR", "")
+        src = os.path.join(spike, "results")
+    print(f"fixtures: {os.path.relpath(src, ROOT) if os.path.abspath(src).startswith(ROOT) else src}")
     verbose = "-v" in argv
     bad = 0
     for name, want in EXPECT.items():
-        path = os.path.join(spike, "results", name)
+        path = os.path.join(src, name)
         try:
             run = json.load(open(path))
         except Exception as e:
@@ -113,6 +122,17 @@ def main(argv):
                 ok = (cid not in wrong) == want_ok
                 bad += not ok
                 print(f"{'OK  ' if ok else 'FAIL'}  probe: {label}")
+                if not ok:
+                    print(out)
+            # mode header: derived from the rows' Mode values, "mixed" when they differ
+            for label, mode_of, want_line in (("all REPLAY", lambda i: "REPLAY", "Mode: REPLAY "),
+                                              ("all MOCK", lambda i: "MOCK", "Mode: MOCK "),
+                                              ("mixed", lambda i: "MOCK" if i == 0 else "REPLAY", "Mode: mixed (MOCK x1, REPLAY x11)")):
+                rows = [dict(to_row(i, c, run.get("variant"), "json"), Mode=mode_of(i)) for i, c in enumerate(run["cases"])]
+                _, _, out = score(rows)
+                ok = out.splitlines()[0].startswith(want_line) if out else False
+                bad += not ok
+                print(f"{'OK  ' if ok else 'FAIL'}  mode header: {label}")
                 if not ok:
                     print(out)
     print("TEST_SCORE: " + ("OK" if not bad else f"FAIL ({bad})"))

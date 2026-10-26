@@ -71,50 +71,100 @@ ClassMethod KeyPresent(ByRef pOverrides) As %Boolean
     quit +$get(cfg("keyPresent"), 0)
 }
 
-/// Enable or disable runtime LIVE mode opt-in via ^IOA.Config("live").
-/// SetLive(1) sets ^IOA.Config("live")=1; SetLive(0) kills ^IOA.Config("live").
+/// Enable or disable runtime LIVE mode via ^IOA.Config("live").
+/// SetLive(1) sets ^IOA.Config("live")=1; SetLive(0) sets ^IOA.Config("live")=0, which turns LIVE off
+/// even when env IOA_LIVE=1 (the global wins over env, see Precedence below).
 ClassMethod SetLive(pOn As %Boolean = 0) As %Status
 {
-    if +pOn {
-        set ^IOA.Config("live") = 1
-    } else {
-        kill ^IOA.Config("live")
-    }
+    set ^IOA.Config("live") = $select(+pOn:1, 1:0)
     set ^IOA.Config("mode") = ..Mode()
     quit $$$OK
 }
 
-/// Check whether LIVE mode is explicitly enabled by env IOA_LIVE=1 or global ^IOA.Config("live")=1.
+/// Precedence for runtime flags (live, record):
+///   1. test override (pOverrides(name)), "" = not set
+///   2. ^IOA.Config(name) when defined and non-empty. Setup.ResetDemo, Setup.Reload and
+///      Setup.InitAndStartProduction seed it from env (SeedFlagsFromEnv: env value, 0 when unset);
+///      in a run SetLive / SetRecord change it (demo.sh --live / --replay, tools/record/live_record.sh).
+///   3. env (IOA_LIVE / IOA_RECORD; GetVar also falls back to the synced copy ^IOA.Config("IOA_...")),
+///      only reached when the global was killed.
+/// AutoApprove has no env path at runtime: ^IOA.Config("autoapprove") only (SyncEnvToGlobal seeds it from IOA_AUTOAPPROVE).
+/// REPLAY=1 (env) is a documented kill switch: it forces REPLAY whatever live says.
+/// Returns 1 if a value was found at levels 1-2 (pVal = 0|1), 0 if the env level decides.
+ClassMethod FlagFromConfig(pName As %String, ByRef pOverrides, Output pVal As %Boolean) As %Boolean [ Private ]
+{
+    set pVal = 0, raw = "", found = 0
+    if $isobject($get(pOverrides)) && pOverrides.%IsDefined(pName) {
+        set raw = $zstrip(pOverrides.%Get(pName), "<>W"), found = 1
+    } elseif $data(pOverrides(pName))#2 {
+        set raw = $zstrip(pOverrides(pName), "<>W"), found = 1
+    } elseif ($data(^IOA.Config(pName))#2) {
+        set raw = $zstrip(^IOA.Config(pName), "<>W")
+    }
+    if (raw = "") { quit 0 }
+    set pVal = ..Truthy(raw)
+    quit 1
+}
+
+/// Raw env value of a flag variable: test override, else process env, else .env (Setup.ReadDotEnv).
+/// "" = not set. The synced copy ^IOA.Config("IOA_...") is not used here (it can be stale).
+ClassMethod EnvFlagRaw(pVar As %String, ByRef pOverrides) As %String
+{
+    if $data(pOverrides(pVar))#2 { quit $zstrip(pOverrides(pVar), "<>W") }
+    set val = $zstrip($SYSTEM.Util.GetEnviron(pVar), "<>W")
+    if val = "" {
+        do ##class(InteropOps.Setup).ReadDotEnv(.env)
+        set val = $zstrip($get(env(pVar)), "<>W")
+    }
+    quit val
+}
+
+/// Copy the env flags into ^IOA.Config: live from IOA_LIVE, record from IOA_RECORD (1/true/yes = 1),
+/// 0 when the env variable is not set. Called by Setup.ResetDemo, Setup.Reload, Setup.InitAndStartProduction.
+/// Returns e.g. "live=0(IOA_LIVE unset) record=0(IOA_RECORD unset)"; values are flags only, never secrets.
+/// pApply=0 (tests): computes pFlags("live"/"record") without writing ^IOA.Config.
+ClassMethod SeedFlagsFromEnv(ByRef pOverrides, pApply As %Boolean = 1, Output pFlags) As %String
+{
+    kill pFlags
+    set out = ""
+    for pair = "live:IOA_LIVE", "record:IOA_RECORD" {
+        set flag = $piece(pair, ":", 1), var = $piece(pair, ":", 2)
+        set raw = ..EnvFlagRaw(var, .pOverrides)
+        set val = $select(raw = "":0, 1:..Truthy(raw))
+        set pFlags(flag) = val
+        set:pApply ^IOA.Config(flag) = val
+        set out = out _ $select(out = "":"", 1:" ") _ flag _ "=" _ val _ "(" _ var _ $select(raw = "":" unset", 1:" set") _ ")"
+    }
+    set:pApply ^IOA.Config("mode") = ..Mode()
+    quit out
+}
+
+/// "1" / "true" / "yes" (any case) -> 1, anything else -> 0
+ClassMethod Truthy(pVal As %String) As %Boolean
+{
+    set v = $zconvert($zstrip(pVal, "<>W"), "L")
+    quit ((v = "1") || (v = "true") || (v = "yes"))
+}
+
+/// Whether LIVE is enabled: ^IOA.Config("live") when set (0 or 1), else env IOA_LIVE=1.
+/// LIVE still needs the key and no REPLAY=1 (see Resolve).
 ClassMethod IsLiveEnabled(ByRef pOverrides) As %Boolean
 {
-    if $isobject($get(pOverrides)) && pOverrides.%IsDefined("IOA_LIVE") {
-        set ioaLive = $zstrip(pOverrides.%Get("IOA_LIVE"), "<>W")
-        if (ioaLive = "1") || ($zconvert(ioaLive, "L") = "true") {
-            quit 1
-        }
-    } elseif $data(pOverrides("IOA_LIVE"))#2 {
-        set ioaLive = $zstrip(pOverrides("IOA_LIVE"), "<>W")
-        if (ioaLive = "1") || ($zconvert(ioaLive, "L") = "true") {
-            quit 1
-        }
-    } else {
-        set ioaLive = ..GetVar("IOA_LIVE")
-        if (ioaLive = "1") || ($zconvert(ioaLive, "L") = "true") {
-            quit 1
-        }
-    }
+    if ..FlagFromConfig("live", .pOverrides, .val) { quit val }
+    quit ..Truthy(..GetVar("IOA_LIVE", .pOverrides))
+}
 
-    if $isobject($get(pOverrides)) && pOverrides.%IsDefined("live") {
-        quit (+pOverrides.%Get("live") = 1)
-    }
-    if $data(pOverrides("live"))#2 {
-        quit (+pOverrides("live") = 1)
-    }
-    quit (+$get(^IOA.Config("live")) = 1)
+/// Pure mode decision, no globals, env or I/O: "LIVE" only when the profile config is complete AND the key is
+/// present AND live is enabled AND REPLAY=1 is not set; anything else is "REPLAY". Resolve() (and so Mode())
+/// uses exactly this function, so CheckSwitching can test the decision with injected inputs.
+ClassMethod ModeFor(pConfigComplete As %Boolean, pKeyPresent As %Boolean, pLive As %Boolean, pForceReplay As %Boolean) As %String
+{
+    quit $select((+pConfigComplete && +pKeyPresent && +pLive && '+pForceReplay):"LIVE", 1:"REPLAY")
 }
 
 /// Active mode: "LIVE" only if active profile key is non-empty AND live is explicitly enabled
-/// (env IOA_LIVE=1 OR global ^IOA.Config("live")=1) AND REPLAY'=1; otherwise "REPLAY".
+/// (^IOA.Config("live")=1, or env IOA_LIVE=1 when the global is not set) AND REPLAY'=1; otherwise "REPLAY".
+/// MOCK is not a config mode: ProviderFactory.Kind() returns MOCK when ^IOA.Dev("mock_base_url") is set.
 ClassMethod Mode() As %String
 {
     do ..Resolve(.cfg)
@@ -170,11 +220,20 @@ ClassMethod SetAutoApprove(pOn As %Boolean = 1) As %Status
     quit $$$OK
 }
 
-/// Whether recording live responses into replay fixtures is enabled (env IOA_RECORD=1)
-ClassMethod RecordEnabled() As %Boolean
+/// Whether recording cassettes is enabled. ^IOA.Config("record") when set (SetRecord), else the legacy
+/// ^IOA.Config("record_override") (synonym, read only when "record" is not set), else env IOA_RECORD=1.
+ClassMethod RecordEnabled(ByRef pOverrides) As %Boolean
 {
-    set val = ..GetVar("IOA_RECORD")
-    quit $select((val="1")||($zconvert(val,"L")="true"):1, 1:0)
+    if ..FlagFromConfig("record", .pOverrides, .val) { quit val }
+    if ..FlagFromConfig("record_override", .pOverrides, .val) { quit val }
+    quit ..Truthy(..GetVar("IOA_RECORD", .pOverrides))
+}
+
+/// Set ^IOA.Config("record") to 1 or 0 (wins over env IOA_RECORD and over the legacy "record_override").
+ClassMethod SetRecord(pOn As %Boolean = 0) As %Status
+{
+    set ^IOA.Config("record") = $select(+pOn:1, 1:0)
+    quit $$$OK
 }
 
 /// Directory monitored for incoming HL7 case files (env IOA_CASES_IN, default /irisdev/app/cases/in/)
@@ -188,7 +247,7 @@ ClassMethod CasesIn() As %String
 /// Default profile is "openai" (provider=openai, keyVar=OPENAI_API_KEY, default model=gpt-5.4-mini, fallback=gpt-4.1-mini).
 /// Alternate profile is "openrouter" (provider=openrouter, keyVar=OPENROUTER_API_KEY, default model=google/gemini-2.5-flash).
 /// LLM_MODEL overrides the profile default model when non-empty.
-/// LIVE mode is strictly opt-in: requires active profile key AND (IOA_LIVE=1 or ^IOA.Config("live")=1) AND REPLAY'=1.
+/// LIVE mode is strictly opt-in: requires active profile key AND live enabled (^IOA.Config("live") when set, else IOA_LIVE=1) AND REPLAY'=1.
 /// REPLAY=1 forces REPLAY mode even when the active profile key and IOA_LIVE=1 are present.
 /// Never includes the raw API key in pConfig or the returned %DynamicObject.
 ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
@@ -218,13 +277,12 @@ ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
     set replayVar = ..GetVar("REPLAY", .pOverrides)
     set forceReplay = ((replayVar = "1") || ($zconvert(replayVar, "L") = "true"))
 
-    set mode = $select((configComplete && keyPresent && liveEnabled && 'forceReplay):"LIVE", 1:"REPLAY")
+    set mode = ..ModeFor(configComplete, keyPresent, liveEnabled, forceReplay)
 
     set rawReplayDir = ..GetVar("IOA_REPLAY_DIR", .pOverrides)
     set replayDir = $select(rawReplayDir="":..#DEFAULTREPLAYDIR, 1:rawReplayDir)
 
-    set rawRecord = ..GetVar("IOA_RECORD", .pOverrides)
-    set recordEnabled = $select((rawRecord="1")||($zconvert(rawRecord,"L")="true"):1, 1:0)
+    set recordEnabled = ..RecordEnabled(.pOverrides)
 
     set rawCasesIn = ..GetVar("IOA_CASES_IN", .pOverrides)
     set casesIn = $select(rawCasesIn="":..#DEFAULTCASESIN, 1:rawCasesIn)
@@ -282,7 +340,10 @@ ClassMethod PrintStatus() As %Status
 /// 1. openai (no key) -> REPLAY (default model gpt-5.4-mini)
 /// 2. openai (with key, IOA_LIVE=0, live=0) -> REPLAY (LIVE is opt-in)
 /// 3. openai (with key + IOA_LIVE=1) -> LIVE
-/// 4. openai (with key + SetLive(1)) -> LIVE, SetLive(0) -> REPLAY
+/// 4. openai (with key + live=1 override) -> LIVE, live=0 -> REPLAY; ModeFor truth table (16 cases)
+/// 10. key + IOA_LIVE=1 + live=0 -> REPLAY; 11. record precedence; 12. SeedFlagsFromEnv (dry)
+/// No test writes ^IOA.Config or ^IOA.Dev, builds a provider or sends a message; the real flags are compared
+/// before/after. Refuses (returns 0) while the production runs and cases/in has files.
 /// 5. openrouter (no key) -> REPLAY (default model google/gemini-2.5-flash)
 /// 6. openrouter (with key, IOA_LIVE=0, live=0) -> REPLAY
 /// 7. openrouter (with key + IOA_LIVE=1) -> LIVE
@@ -290,9 +351,15 @@ ClassMethod PrintStatus() As %Status
 /// 9. openrouter (with key + IOA_LIVE=1 + REPLAY=1) -> REPLAY
 ClassMethod CheckSwitching() As %Boolean
 {
+    // Guard: refuse while the production is running and cases/in has files (a run may be in progress)
+    set why = ..SwitchingTestBusy()
+    if why '= "" {
+        write "CHECK_SWITCHING=REFUSED (", why, ")", !
+        write "FAIL", !
+        quit 0
+    }
     set allPass = 1
-    set hadLiveGlobal = $data(^IOA.Config("live"))#2
-    set savedLiveGlobal = $get(^IOA.Config("live"))
+    set before = ..RealFlagsSnapshot()
 
     // 1. openai without key -> REPLAY
     kill ov
@@ -326,26 +393,32 @@ ClassMethod CheckSwitching() As %Boolean
     set ov("LLM_MODEL") = ""
     set ov("OPENAI_API_KEY") = "test-override-dummy-key"
     set ov("IOA_LIVE") = "1"
-    set ov("live") = 0
+    set ov("live") = ""
     set ov("REPLAY") = ""
     do ..Resolve(.cfg3, .ov)
     set pass3 = (($get(cfg3("profile"))="openai") && ($get(cfg3("provider"))="openai") && ($get(cfg3("model"))="gpt-5.4-mini") && ($get(cfg3("keyVar"))="OPENAI_API_KEY") && ($get(cfg3("apiKeyRef"))="@{env:OPENAI_API_KEY}") && ($get(cfg3("mode"))="LIVE"))
     write "TRANSITION_3_OPENAI_KEY_IOA_LIVE=", $select(pass3:"PASS", 1:"FAIL"), !
     if 'pass3 { set allPass = 0 }
 
-    // 4. openai with test override key + SetLive(1) -> LIVE, SetLive(0) -> REPLAY
+    // 4. live toggle (what SetLive(1)/SetLive(0) store) injected as an override, never written to ^IOA.Config,
+    //    plus the full ModeFor truth table: only (complete, key, live, no REPLAY) gives LIVE
     kill ov
     set ov("LLM_PROFILE") = "openai"
     set ov("LLM_MODEL") = ""
     set ov("OPENAI_API_KEY") = "test-override-dummy-key"
     set ov("IOA_LIVE") = "0"
     set ov("REPLAY") = ""
-    do ..SetLive(1)
+    set ov("live") = 1
     do ..Resolve(.cfg4a, .ov)
-    do ..SetLive(0)
+    set ov("live") = 0
     do ..Resolve(.cfg4b, .ov)
-    set pass4 = (($get(cfg4a("mode"))="LIVE") && ($get(cfg4b("mode"))="REPLAY") && ('$data(^IOA.Config("live"))))
-    write "TRANSITION_4_OPENAI_SETLIVE_TOGGLE=", $select(pass4:"PASS", 1:"FAIL"), !
+    set table = 1
+    for cc = 0, 1 { for kp = 0, 1 { for lv = 0, 1 { for fr = 0, 1 {
+        set want = $select(cc && kp && lv && 'fr:"LIVE", 1:"REPLAY")
+        if ..ModeFor(cc, kp, lv, fr) '= want { set table = 0 }
+    } } } }
+    set pass4 = (($get(cfg4a("mode"))="LIVE") && ($get(cfg4b("mode"))="REPLAY") && table)
+    write "TRANSITION_4_OPENAI_LIVE_TOGGLE_MODEFOR=", $select(pass4:"PASS", 1:"FAIL"), !
     if 'pass4 { set allPass = 0 }
 
     // 5. openrouter without key -> REPLAY
@@ -380,7 +453,7 @@ ClassMethod CheckSwitching() As %Boolean
     set ov("LLM_MODEL") = ""
     set ov("OPENROUTER_API_KEY") = "test-override-dummy-key"
     set ov("IOA_LIVE") = "1"
-    set ov("live") = 0
+    set ov("live") = ""
     set ov("REPLAY") = ""
     do ..Resolve(.cfg7, .ov)
     set pass7 = (($get(cfg7("profile"))="openrouter") && ($get(cfg7("provider"))="openrouter") && ($get(cfg7("model"))="google/gemini-2.5-flash") && ($get(cfg7("keyVar"))="OPENROUTER_API_KEY") && ($get(cfg7("apiKeyRef"))="@{env:OPENROUTER_API_KEY}") && ($get(cfg7("mode"))="LIVE"))
@@ -413,16 +486,92 @@ ClassMethod CheckSwitching() As %Boolean
     write "TRANSITION_9_OPENROUTER_REPLAY_OVERRIDE=", $select(pass9:"PASS", 1:"FAIL"), !
     if 'pass9 { set allPass = 0 }
 
-    if hadLiveGlobal {
-        set ^IOA.Config("live") = savedLiveGlobal
-    } else {
-        kill ^IOA.Config("live")
+    // 10. key + IOA_LIVE=1 but live=0 (SetLive(0)) -> REPLAY: the global wins over env
+    kill ov
+    set ov("LLM_PROFILE") = "openai"
+    set ov("OPENAI_API_KEY") = "test-override-dummy-key"
+    set ov("IOA_LIVE") = "1"
+    set ov("live") = 0
+    set ov("REPLAY") = ""
+    do ..Resolve(.cfg10, .ov)
+    set pass10 = ($get(cfg10("mode")) = "REPLAY")
+    write "TRANSITION_10_LIVE_GLOBAL_OFF_WINS=", $select(pass10:"PASS", 1:"FAIL"), !
+    if 'pass10 { set allPass = 0 }
+
+    // 11. record: global "record" wins over env; legacy "record_override" only when "record" is not set
+    kill ov
+    set ov("IOA_RECORD") = "1", ov("record") = 0, ov("record_override") = 1
+    set r1 = ..RecordEnabled(.ov)
+    kill ov
+    set ov("IOA_RECORD") = "0", ov("record") = "", ov("record_override") = 1
+    set r2 = ..RecordEnabled(.ov)
+    kill ov
+    set ov("IOA_RECORD") = "1", ov("record") = "", ov("record_override") = ""
+    set r3 = ..RecordEnabled(.ov)
+    set pass11 = ((r1 = 0) && (r2 = 1) && (r3 = 1))
+    write "TRANSITION_11_RECORD_PRECEDENCE=", $select(pass11:"PASS", 1:"FAIL"), !
+    if 'pass11 { set allPass = 0 }
+
+    // 12. SeedFlagsFromEnv (dry, the real globals are not written): env set -> 1, env unset -> 0;
+    //     Resolve with the seeded value as the global value gives LIVE / REPLAY
+    kill ov
+    set ov("IOA_LIVE") = "1", ov("IOA_RECORD") = "yes"
+    set seedA = ..SeedFlagsFromEnv(.ov, 0, .fA)
+    kill ov
+    set ov("IOA_LIVE") = "", ov("IOA_RECORD") = ""
+    set seedB = ..SeedFlagsFromEnv(.ov, 0, .fB)
+    kill ov
+    set ov("LLM_PROFILE") = "openai", ov("OPENAI_API_KEY") = "test-override-dummy-key", ov("REPLAY") = "", ov("live") = fA("live")
+    do ..Resolve(.cfg12a, .ov)
+    set ov("live") = fB("live"), ov("IOA_LIVE") = "1"
+    do ..Resolve(.cfg12b, .ov)
+    set pass12 = ((fA("live") = 1) && (fA("record") = 1) && (fB("live") = 0) && (fB("record") = 0) && ($get(cfg12a("mode")) = "LIVE") && ($get(cfg12b("mode")) = "REPLAY"))
+    write "TRANSITION_12_SEED_FROM_ENV=", $select(pass12:"PASS", 1:"FAIL"), " [", seedA, " | ", seedB, "]", !
+    if 'pass12 { set allPass = 0 }
+
+    // Real settings must be exactly as before (no test writes ^IOA.Config)
+    set after = ..RealFlagsSnapshot()
+    write "REAL_FLAGS_BEFORE=", before, " AFTER=", after, !
+    if after '= before {
+        write "REAL_FLAGS_CHANGED=1", !
+        set allPass = 0
     }
-    set ^IOA.Config("mode") = ..Mode()
 
     write "CHECK_SWITCHING=", $select(allPass:"PASS", 1:"FAIL"), !
     write $select(allPass:"PASS", 1:"FAIL"), !
     quit allPass
+}
+
+/// Real live/record/mode settings as one string (flags only, no secrets), for CheckSwitching before/after.
+ClassMethod RealFlagsSnapshot() As %String
+{
+    set out = ""
+    for n = "live", "record", "record_override", "mode" {
+        set out = out _ $select(out = "":"", 1:",") _ n _ "=" _ $select($data(^IOA.Config(n))#2:^IOA.Config(n), 1:"UNDEF")
+    }
+    quit out
+}
+
+/// "" when CheckSwitching may run; otherwise the reason: production running AND files in cases/in.
+/// pDir: directory to inspect instead of CasesIn() (used to test the guard itself).
+ClassMethod SwitchingTestBusy(pDir As %String = "") As %String
+{
+    set running = 0, prod = "", state = ""
+    try {
+        do ##class(Ens.Director).GetProductionStatus(.prod, .state)
+        set running = (state = 1)
+    } catch ex {
+        set running = 1
+    }
+    quit:'running ""
+    set dir = ##class(%File).NormalizeDirectory($select(pDir '= "":pDir, 1:..CasesIn())), n = 0
+    set f = $zsearch(dir _ "*")
+    while f '= "" {
+        set name = $piece(f, "/", *)
+        if (name '= ".") && (name '= "..") && ##class(%File).Exists(f) && '##class(%File).DirectoryExists(f) { set n = n + 1 }
+        set f = $zsearch("")
+    }
+    quit $select(n > 0:"production " _ prod _ " running and " _ n _ " file(s) in " _ dir, 1:"")
 }
 
 }

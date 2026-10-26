@@ -1,0 +1,26 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C03",
+  "match":{
+    "msh10":"C03-MSG001",
+    "prompt_sha256":"95db6dc65d53fd5aa924864ae6d5b594a96940f576bdf50f349705d5b5f45def"
+  },
+  "recorded":{
+    "profile":"rules",
+    "model":"none",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:07Z",
+    "source":"rules"
+  },
+  "turns":[
+  ],
+  "expected":{
+    "decision":"convert_unit",
+    "rationale_short":"Rule A2c: UCUM table unit pair"
+  },
+  "usage":{
+    "prompt_tokens":0,
+    "completion_tokens":0
+  },
+  "llm_calls":0
+}

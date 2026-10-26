@@ -1,0 +1,26 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C06",
+  "match":{
+    "msh10":"C06-MSG001",
+    "prompt_sha256":"b799c1811d44393939ca8f8fa387d8d0d6a60b9398b700b59a21a13d8254fb3e"
+  },
+  "recorded":{
+    "profile":"rules",
+    "model":"none",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:07Z",
+    "source":"rules"
+  },
+  "turns":[
+  ],
+  "expected":{
+    "decision":"quarantine",
+    "rationale_short":"Rule A1: duplicate MSH-10 with identical copies"
+  },
+  "usage":{
+    "prompt_tokens":0,
+    "completion_tokens":0
+  },
+  "llm_calls":0
+}

@@ -1,0 +1,67 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C05",
+  "match":{
+    "msh10":"C05-MSG001",
+    "prompt_sha256":"e2f9e6b2252471e4c62ca3c0899972019f3031695f7815b8e8eaea7513a04712"
+  },
+  "recorded":{
+    "profile":"openai",
+    "model":"gpt-5.4-mini",
+    "build":"2026.3.0AI.154",
+    "at":"2026-10-26T22:22:19Z",
+    "source":"live"
+  },
+  "turns":[
+    {
+      "role":"assistant",
+      "tool_calls":[
+        {
+          "name":"CheckCriticalValues",
+          "arguments":{
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"BUN"
+          }
+        },
+        {
+          "name":"CheckUnitEquivalence",
+          "arguments":{
+            "fromUnit":"mg/dl",
+            "toUnit":"mg/dL"
+          }
+        }
+      ],
+      "tool_results":[
+        {
+          "name":"CheckCriticalValues",
+          "content":"{\"case_id\":\"C05\",\"critical\":[],\"critical_count\":0,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":90,\"results_not_checked\":60,\"total_messages\":30}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[{\"canonical_name\":\"Urea nitrogen [Mass/volume] in Serum or Plasma\",\"expected_unit\":\"mg/dL\",\"history_median\":14,\"history_units\":{\"mg/dL\":100},\"local_code\":\"BUN\",\"loinc\":\"3094-0\",\"panel\":\"BMP\",\"ref_range\":\"7-20\",\"short_name\":\"Urea nitrogen\"}],\"query\":\"BUN\"}"
+        },
+        {
+          "name":"CheckUnitEquivalence",
+          "content":"{\"basis\":\"same UCUM unit, different letter case (mg/dL)\",\"equivalent\":1,\"factor\":1,\"from_unit\":\"mg/dl\",\"to_unit\":\"mg/dL\"}"
+        }
+      ]
+    },
+    {
+      "role":"assistant",
+      "content":"{\"action\":\"pass\",\"target\":null,\"reason\":\"BUN maps to LOINC 3094-0 and the only unit difference is spelling/case (mg/dl vs mg/dL), which CheckUnitEquivalence reports as equivalent; no critical results were found.\",\"evidence\":[\"Lookup for BUN returns local code BUN -> LOINC 3094-0 with expected unit mg/dL and reference range 7-20.\",\"CheckUnitEquivalence reports mg/dl and mg/dL are the same UCUM unit with factor 1.\",\"CheckCriticalValues found 0 critical results in the batch.\"],\"field_drift\":null}"
+    }
+  ],
+  "expected":{
+    "decision":"pass",
+    "rationale_short":"BUN maps to LOINC 3094-0 and the only unit difference is spelling/case (mg/dl vs mg/dL), which CheckUnitEquivalence reports as equivalent; no critical results were found."
+  },
+  "usage":{
+    "prompt_tokens":3515,
+    "completion_tokens":208
+  },
+  "llm_calls":2
+}
