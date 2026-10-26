@@ -6,4 +6,6 @@ Property CaseId As %String;
 
 Property DecisionJSON As %String(MAXLEN = "");
 
+Property TaskId As %String;
+
 }

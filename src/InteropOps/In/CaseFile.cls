@@ -24,8 +24,7 @@ Method OnProcessInput(pFileStream As %CharacterStream, Output pOutput As %Regist
     Set tReq = ##class(InteropOps.Msg.CaseRequest).%New()
     Set tReq.FileName = pFileStream.Filename, tReq.MessageCount = ..CaseDocs.Count()
     Set tReq.FirstMSH10 = ##class(InteropOps.Util.Ids).NormMSH10(..CaseDocs.GetAt(1).GetValueAt("MSH:10"))
-    Set tReq.CaseId = ##class(InteropOps.Util.Ids).CaseIdFromMSH10(tReq.FirstMSH10)
-    Set:tReq.CaseId="" tReq.CaseId = ##class(InteropOps.Util.Ids).CaseIdFromFile(pFileStream.Filename)
+    Set tReq.CaseId = ##class(InteropOps.Util.Ids).CaseIdForFile(pFileStream.Filename, tReq.FirstMSH10, ..%SessionId)
     For i = 1:1:..CaseDocs.Count() Do tReq.Messages.Insert(..CaseDocs.GetAt(i))
     Do ..CaseDocs.Clear()
     // new session for the case

@@ -511,6 +511,7 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
     do ..SyncEnvToGlobal()
     write "FLAGS_FROM_ENV=", ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv(), !
     do ..LoadLabCodeMap()
+    do ..MaybeInstallDailyReset()
 
     set casesInDir = ##class(InteropOps.Config.LLMConfig).CasesIn()
     if (casesInDir '= "") && ('##class(%File).DirectoryExists(casesInDir)) {
@@ -595,6 +596,7 @@ ClassMethod Reload(pSrcDir As %String = "/irisdev/app/src") As %Status
     do ..SyncEnvToGlobal()
     write "FLAGS_FROM_ENV=", ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv(), !
     do ..LoadLabCodeMap()
+    do ..MaybeInstallDailyReset()
     do ..EnsureReviewer()
 
     set prodName = "InteropOps.Production"
@@ -620,6 +622,93 @@ ClassMethod Reload(pSrcDir As %String = "/irisdev/app/src") As %Status
     do ##class(Ens.Director).SetAutoStart(prodName)
     write "RELOAD_RESULT=OK", !
     quit $$$OK
+}
+
+/// Name of the Task Manager task created by InstallDailyReset (= InteropOps.Task.DailyReset TaskName).
+Parameter DAILYRESETTASK = "IOA Daily Budget Reset";
+
+/// Called by InitAndStartProduction and Reload: installs the daily ^IOA.Budget reset only when IOA_DAILY_RESET is
+/// 1/true/yes (process env via $SYSTEM.Util.GetEnviron, else .env; LLMConfig.EnvFlagRaw). Otherwise does nothing
+/// (an already installed task is left alone; remove it with UninstallDailyReset). Not installed by default.
+ClassMethod MaybeInstallDailyReset() As %Boolean
+{
+    set raw = ##class(InteropOps.Config.LLMConfig).EnvFlagRaw("IOA_DAILY_RESET")
+    if '##class(InteropOps.Config.LLMConfig).Truthy(raw) {
+        write "DAILY_RESET=off (IOA_DAILY_RESET ", $select(raw = "": "unset", 1: "not 1"), ")", !
+        quit 0
+    }
+    quit $$$ISOK(..InstallDailyReset())
+}
+
+/// Local server time of day (seconds after midnight) that equals pUtcSec UTC, from the current $HOROLOG vs
+/// $ZTIMESTAMP difference (rounded to minutes). Task Manager schedules in local server time; the compose file
+/// sets no TZ, so the container normally runs in UTC and this returns pUtcSec. A DST change on the server is not
+/// followed until the task is reinstalled (run InstallDailyReset again).
+ClassMethod LocalSecondsForUtc(pUtcSec As %Integer = 0) As %Integer
+{
+    set loc = $horolog, utc = $ztimestamp
+    set offset = (($piece(loc, ",", 1) - $piece(utc, ",", 1)) * 86400) + ($piece(loc, ",", 2) - $piece($piece(utc, ",", 2), ".", 1))
+    set offset = $normalize(offset / 60, 0) * 60
+    quit (pUtcSec + offset) # 86400
+}
+
+/// ID of the Task Manager task named DAILYRESETTASK, "" if none. Looks it up in %SYS by name.
+ClassMethod DailyResetTaskId() As %String
+{
+    set name = ..#DAILYRESETTASK, id = ""
+    new $namespace
+    set $namespace = "%SYS"
+    set rs = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %SYS.Task WHERE Name = ?", name)
+    if (rs.%SQLCODE = 0) && rs.%Next() { set id = rs.ID }
+    quit id
+}
+
+/// Create or update (idempotent, by name) a Task Manager task that runs InteropOps.Task.DailyReset once a day at
+/// 00:00 UTC (converted to local server time, see LocalSecondsForUtc) in namespace IRISAPP.
+/// Writes DAILY_RESET_INSTALLED=1|0 and the local start time.
+ClassMethod InstallDailyReset() As %Status
+{
+    set sc = $$$OK, name = ..#DAILYRESETTASK, id = ..DailyResetTaskId(), startSec = ..LocalSecondsForUtc(0)
+    try {
+        new $namespace
+        set $namespace = "%SYS"
+        set task = $select(id '= "": ##class(%SYS.Task).%OpenId(id), 1: ##class(%SYS.Task).%New())
+        if '$isobject(task) {
+            set sc = $$$ERROR($$$GeneralError, "cannot open task " _ id)
+        } else {
+            set task.Name = name
+            set task.Description = "Interop Ops Agent: daily reset of the LIVE call counter ^IOA.Budget at 00:00 UTC"
+            set task.NameSpace = "IRISAPP"
+            set task.TaskClass = "InteropOps.Task.DailyReset"
+            set task.TimePeriod = 0
+            set task.TimePeriodEvery = 1
+            set task.DailyFrequency = 0
+            set task.DailyStartTime = startSec
+            set sc = task.%Save()
+        }
+    } catch ex {
+        set sc = ex.AsStatus()
+    }
+    write "DAILY_RESET_INSTALLED=", $select($$$ISOK(sc): 1, 1: 0), " TASK=", $select(id '= "": "updated " _ id, 1: "new"), " LOCAL_START=", $ztime(startSec, 2), " (00:00 UTC)", !
+    if $$$ISERR(sc) { write "DAILY_RESET_ERROR=", $system.Status.GetErrorText(sc), ! }
+    quit sc
+}
+
+/// Remove only the Task Manager task named DAILYRESETTASK (an IRIS task object; no files). Writes DAILY_RESET_REMOVED=1|0.
+ClassMethod UninstallDailyReset() As %Status
+{
+    set sc = $$$OK, id = ..DailyResetTaskId()
+    if id '= "" {
+        try {
+            new $namespace
+            set $namespace = "%SYS"
+            set sc = ##class(%SYS.Task).%DeleteId(id)
+        } catch ex {
+            set sc = ex.AsStatus()
+        }
+    }
+    write "DAILY_RESET_REMOVED=", $select((id '= "") && $$$ISOK(sc): 1, 1: 0), $select(id = "": " (not installed)", 1: ""), !
+    quit sc
 }
 
 }

@@ -13,14 +13,22 @@ on_error() {
 }
 trap on_error ERR
 
-TARBALL="${IRIS_IMAGE_TAR:-../irishealth_arm64-community-2026.3.0AI.154.0-docker.tar.gz}"
+# Default archive by host architecture (both are published on the EAP portal for build 154); IRIS_IMAGE_TAR overrides.
+case "$(uname -m)" in
+  arm64|aarch64) DEFAULT_TAR="../irishealth_arm64-community-2026.3.0AI.154.0-docker.tar.gz" ;;
+  *)             DEFAULT_TAR="../irishealth-community-2026.3.0AI.154.0-docker.tar.gz" ;;
+esac
+TARBALL="${IRIS_IMAGE_TAR:-$DEFAULT_TAR}"
+# Name the ARM64 archive loads as (seen here). After a load, the name from the "Loaded image:" line of
+# docker image load is used instead, so another archive (x64) works without knowing its name in advance.
 ORIG_IMAGE="docker.iscinternal.com/docker-intersystems/intersystems/irishealth-community:2026.3.0AI.154.0"
+SRC_IMAGE="$ORIG_IMAGE"
 LOCAL_TAG="irishealth-aihub:2026.3.0AI.154.0"
 PROJECT_NAME="interop-ops-agent"
 CONTAINER_NAME="interop-ops-agent-iris-1"
 
 CURRENT_STEP="checking local Docker images"
-if docker image inspect "$ORIG_IMAGE" >/dev/null 2>&1 || docker image inspect "$LOCAL_TAG" >/dev/null 2>&1; then
+if docker image inspect "$LOCAL_TAG" >/dev/null 2>&1 || docker image inspect "$ORIG_IMAGE" >/dev/null 2>&1; then
   echo "Base image already loaded locally; skipping docker image load."
 else
   CURRENT_STEP="checking image archive ${TARBALL}"
@@ -29,13 +37,16 @@ else
     false
   fi
   CURRENT_STEP="loading Docker image from ${TARBALL}"
-  docker image load -i "$TARBALL"
+  LOAD_OUT="$(docker image load -i "$TARBALL")"
+  printf '%s\n' "$LOAD_OUT"
+  LOADED_NAME="$(printf '%s\n' "$LOAD_OUT" | sed -n 's/^Loaded image: //p' | tail -n 1)"
+  if [ -n "$LOADED_NAME" ]; then SRC_IMAGE="$LOADED_NAME"; fi
 fi
 
 CURRENT_STEP="ensuring local image tag ${LOCAL_TAG}"
 if ! docker image inspect "$LOCAL_TAG" >/dev/null 2>&1; then
-  docker tag "$ORIG_IMAGE" "$LOCAL_TAG"
-  echo "Tagged ${ORIG_IMAGE} as ${LOCAL_TAG}"
+  docker tag "$SRC_IMAGE" "$LOCAL_TAG"
+  echo "Tagged ${SRC_IMAGE} as ${LOCAL_TAG}"
 else
   echo "Tag ${LOCAL_TAG} already exists; keeping existing tag."
 fi

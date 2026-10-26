@@ -42,7 +42,7 @@ Method Replay(pBO As Ens.BusinessOperation, pRequest As InteropOps.Msg.AgentRequ
         }
     }
     Set pResponse.CassetteJSON = {"replay": "hit", "file": (tFile), "source": (tC.recorded.source), "recorded_at": (tC.recorded.at),
-        "prompt_match": (tC.match."prompt_sha256" = tSHA), "tool_calls": (tCalls), "tool_results_same": (tSame), "tool_results_changed": (tChanged),
+        "prompt_match": (tC.match."prompt_sha256" = tSHA), "warnings": ($SELECT(tC.match."prompt_sha256" = tSHA: [], 1: ["replay_prompt_drift"])), "tool_calls": (tCalls), "tool_results_same": (tSame), "tool_results_changed": (tChanged),
         "recorded_llm_calls": (tC."llm_calls"), "recorded_usage": (tC.usage)}.%ToJSON()
     If tFinal = "" {
         Set tKind = $SELECT($ISOBJECT(tC.error): tC.error.kind, 1: "replay_no_answer")

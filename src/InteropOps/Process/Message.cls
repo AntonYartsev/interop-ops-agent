@@ -35,10 +35,13 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </property>
 <property name='TaskId' type='%String' />
 <property name='TaskAction' type='%String' />
+<property name='Stage' type='%String' />
 <property name='ApplyJSON' type='%String' >
 <parameters><parameter name='MAXLEN' value='' /></parameters>
 </property>
 </context>
+<sequence>
+<scope name='Case' >
 <sequence>
 <code name='Ingest batch' >
 <![CDATA[ set context.CaseId=request.CaseId
@@ -55,6 +58,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </code>
 <if name='Unresolved by rules?' condition='context.RulesAction="escalate"' >
 <true>
+<assign name='Stage Agent' property="context.Stage" value='"agent"' action="set" />
 <call name='Agent' target='IOA.Agent' async='0' >
 <request type='InteropOps.Msg.AgentRequest' >
 <assign property="callrequest.CaseId" value='request.CaseId' action="set" />
@@ -70,6 +74,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </call>
 </true>
 </if>
+<assign name='Stage Gate' property="context.Stage" value='"gate"' action="set" />
 <call name='Gate' target='IOA.Gate.Replay' async='0' >
 <request type='InteropOps.Msg.GateRequest' >
 <assign property="callrequest.CaseId" value='request.CaseId' action="set" />
@@ -82,12 +87,14 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign property="context.GateJSON" value='callresponse.GateJSON' action="set" />
 </response>
 </call>
+<assign name='Stage decision' property="context.Stage" value='"decision"' action="set" />
 <code name='Decision row' >
 <![CDATA[ $$$ThrowOnError(##class(InteropOps.Process.Message).RecordDecision(context, request, process.%SessionId, .tRow))
  $$$LOGINFO("decision "_request.CaseId_": "_tRow.Action_" -> "_tRow.FinalStatus_" ("_context.Source_") gate="_context.GateSummary) ]]>
 </code>
 <if name='Needs human review?' condition='(context.FinalAction="patch_mapping")||(context.FinalAction="convert_unit")' >
 <true>
+<assign name='Stage Review task' property="context.Stage" value='"workflow"' action="set" />
 <call name='Review task' target='IOA.Workflow' async='0' >
 <request type='EnsLib.Workflow.TaskRequest' >
 <assign property="callrequest" value='##class(InteropOps.Workflow.Operation).BuildTask(request.CaseId,context.DecisionJSON,context.GateSummary)' action="set" />
@@ -99,10 +106,12 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </call>
 <if name='Approved?' condition='context.TaskAction="Approve"' >
 <true>
+<assign name='Stage Apply and reprocess' property="context.Stage" value='"apply"' action="set" />
 <call name='Apply and reprocess' target='IOA.Lookup.Apply' async='0' >
 <request type='InteropOps.Msg.ApplyRequest' >
 <assign property="callrequest.CaseId" value='request.CaseId' action="set" />
 <assign property="callrequest.DecisionJSON" value='context.DecisionJSON' action="set" />
+<assign property="callrequest.TaskId" value='context.TaskId' action="set" />
 </request>
 <response type='InteropOps.Msg.ApplyResponse' >
 <assign property="context.ApplyJSON" value='callresponse.ResultJSON' action="set" />
@@ -112,10 +121,20 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </if>
 <code name='Final decision row' >
 <![CDATA[ $$$ThrowOnError(##class(InteropOps.Process.Message).RecordHuman(context, request, process.%SessionId, .tRow))
- $$$LOGINFO("human " _ request.CaseId _ ": " _ tRow.Action _ " -> " _ tRow.FinalStatus _ " (" _ tRow.Source _ ") task=" _ context.TaskId) ]]>
+ if tRow.FinalStatus="none" { $$$LOGWARNING("task "_context.TaskId_" cancelled (action '"_context.TaskAction_"'): no final row, nothing applied") } else {
+ $$$LOGINFO("human " _ request.CaseId _ ": " _ tRow.Action _ " -> " _ tRow.FinalStatus _ " (" _ tRow.Source _ ") task=" _ context.TaskId) } ]]>
 </code>
 </true>
 </if>
+</sequence>
+<faulthandlers>
+<catchall name='Catch-all' >
+<code name='Escalated row on error' >
+<![CDATA[ do ##class(InteropOps.Process.Message).RecordError(context, request, process.%SessionId, $system.Status.GetErrorText(context.%LastError)) ]]>
+</code>
+</catchall>
+</faulthandlers>
+</scope>
 </sequence>
 </process>
 }
@@ -123,6 +142,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 /// Store the raw messages of the case in ^IOA.Batch(caseId, n) for rules, gate and tools
 ClassMethod Ingest(pRequest As InteropOps.Msg.CaseRequest)
 {
+    Quit:pRequest.CaseId=""
     Kill ^IOA.Batch(pRequest.CaseId)
     For i = 1:1:pRequest.Messages.Count() {
         Set ^IOA.Batch(pRequest.CaseId, i) = $TRANSLATE(pRequest.Messages.GetAt(i).OutputToString(), $CHAR(10), "")
@@ -133,7 +153,7 @@ ClassMethod Ingest(pRequest As InteropOps.Msg.CaseRequest)
 ClassMethod AgentSummary(pR As InteropOps.Msg.AgentResponse) As %String
 {
     Return {"provider_kind": (pR.ProviderKind), "provider": (pR.Provider), "model": (pR.Model), "valid": (pR.Valid), "invalid_reason": (pR.InvalidReason),
-        "error_kind": (pR.ErrorKind), "error": ($EXTRACT(pR.Error, 1, 500)), "max_iterations": (pR.MaxIterations), "llm_calls": (pR.LLMCalls),
+        "error_kind": (pR.ErrorKind), "error": (##class(InteropOps.Util.Redact).Text(pR.Error)), "max_iterations": (pR.MaxIterations), "llm_calls": (pR.LLMCalls),
         "prompt_tokens": (pR.PromptTokens), "completion_tokens": (pR.CompletionTokens),
         "tool_calls": ({}.%FromJSON($SELECT(pR.ToolCallsJSON = "": "[]", 1: pR.ToolCallsJSON))),
         "critical_check": ({}.%FromJSON($SELECT(pR.CriticalCheckJSON = "": "{}", 1: pR.CriticalCheckJSON))),
@@ -146,23 +166,53 @@ ClassMethod RecordDecision(pContext As Ens.BP.Context, pRequest As InteropOps.Ms
     Set pRow = ..BuildRow(pContext, pRequest, pSessionId)
     // recording on: a rules-decided case gets a cassette without turns (agent cases are recorded by IOA.Agent)
     If (pContext.Source = "rules") && ##class(InteropOps.Agent.Cassette).RecordOn() {
-        Do ##class(InteropOps.Agent.Cassette).Write(##class(InteropOps.Agent.Cassette).FromRules(pRequest.CaseId, pRequest.FirstMSH10, {}.%FromJSON(pContext.DecisionJSON)))
+        Try {
+            Do ##class(InteropOps.Agent.Cassette).Write(##class(InteropOps.Agent.Cassette).FromRules(pRequest.CaseId, pRequest.FirstMSH10, {}.%FromJSON(pContext.DecisionJSON)))
+        } Catch tEx {
+            Do pRow.gateDetail.%Set("error_kind", "cassette_error"), pRow.gateDetail.%Set("error", ##class(InteropOps.Util.Redact).Text(tEx.DisplayString()))
+        }
     }
     Return ##class(InteropOps.Data.Decision).Record(pRow)
 }
 
 /// Final row after the human review (last row wins): Approve -> applied, Reject -> rejected.
+/// Any other task action (Cancelled, or "" from CompleteTask(task,"") in ResetDemo): no row, Decision has no "cancelled" status.
 /// Source human:auto if LLMConfig.AutoApprove() (the Inbox task still exists and is completed).
 ClassMethod RecordHuman(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.CaseRequest, pSessionId As %Integer, Output pRow As %DynamicObject) As %Status
 {
     Set pRow = ..BuildRow(pContext, pRequest, pSessionId), tApproved = (pContext.TaskAction = "Approve")
+    If 'tApproved && (pContext.TaskAction '= "Reject") {
+        Set pRow = {"Action": (pRow.Action), "FinalStatus": "none", "Source": "human"}
+        Quit $$$OK
+    }
     Set tAuto = ##class(InteropOps.Config.LLMConfig).AutoApprove()
+    Set tApply = {}.%FromJSON($SELECT(pContext.ApplyJSON = "": "{}", 1: pContext.ApplyJSON))
+    Set tApplyFail = $SELECT('tApproved: "", tApply.error '= "": "apply error: " _ $EXTRACT(##class(InteropOps.Util.Redact).Text(tApply.error), 1, 200), tApply.applied = "": "apply skipped: " _ $SELECT(tApply.skipped '= "": tApply.skipped, 1: "no apply result"), 1: "")
     Set tBase = $PIECE(pRow.Reason, " | gate passed; awaiting", 1)
     Set pRow.Source = $SELECT(tAuto: "human:auto", 1: "human"), pRow.TaskId = pContext.TaskId
-    Set pRow.FinalStatus = $SELECT(tApproved: "applied", 1: "rejected")
-    Set pRow.Reason = $SELECT(tAuto: "auto-approved (IOA_AUTOAPPROVE) ", 1: "") _ $SELECT(tApproved: "approved by reviewer, applied and case reprocessed", 1: "rejected by reviewer, nothing applied") _ " | " _ tBase
-    If tApproved Do pRow.gateDetail.%Set("apply", {}.%FromJSON(pContext.ApplyJSON))
+    Set pRow.FinalStatus = $SELECT(tApplyFail '= "": "escalated", tApproved: "applied", 1: "rejected")
+    Set tHuman = $SELECT('tApproved: "rejected by reviewer, nothing applied", tApplyFail = "": "approved by reviewer, applied and case reprocessed",
+        tApply.error '= "": "approved by reviewer, apply error: " _ $EXTRACT(##class(InteropOps.Util.Redact).Text(tApply.error), 1, 200),
+        1: "approved by reviewer, apply skipped: " _ $SELECT(tApply.skipped '= "": tApply.skipped, 1: "no apply result") _ ", not reprocessed")
+    Set pRow.Reason = $SELECT(tAuto: "auto-approved (IOA_AUTOAPPROVE) ", 1: "") _ tHuman _ " | " _ tBase
+    If tApplyFail '= "" Set pRow.Action = "escalate", pRow.Reason = tApplyFail _ " | " _ pRow.Reason, pRow.Target = "", pRow.Factor = ""
+    If tApproved Do pRow.gateDetail.%Set("apply", tApply)
+    If tApplyFail '= "" Do pRow.gateDetail.%Set("error_kind", "apply_error")
     Return ##class(InteropOps.Data.Decision).Record(pRow)
+}
+
+/// Catch-all: no case ends without a final row. Escalated row, gateDetail.error_kind from the failed stage.
+ClassMethod RecordError(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.CaseRequest, pSessionId As %Integer, pError As %String)
+{
+    Set tKind = $CASE(pContext.Stage, "agent": "agent_error", "gate": "gate_error", "workflow": "workflow_error", "apply": "apply_error", "decision": "decision_error", : "process_error")
+    Set pError = ##class(InteropOps.Util.Redact).Text(pError)
+    $$$LOGERROR("catch-all " _ pRequest.CaseId _ " " _ tKind _ ": " _ pError)
+    Set tRow = {"CaseId": (pRequest.CaseId), "MSH10": (pRequest.FirstMSH10), "SessionId": (pSessionId), "Mode": (##class(InteropOps.Config.LLMConfig).Mode()),
+        "Source": ($SELECT(pContext.Source '= "": pContext.Source, 1: "rules")), "Action": "escalate", "Target": "", "Factor": "",
+        "Reason": (tKind _ ": " _ pError), "GateResult": (pContext.GateSummary), "FinalStatus": "escalated", "evidence": [],
+        "gateDetail": {"error_kind": (tKind), "error": (pError), "stage": (pContext.Stage)}}
+    Set tSC = ##class(InteropOps.Data.Decision).Record(tRow)
+    If $$$ISERR(tSC) $$$LOGERROR("catch-all row failed: " _ $system.Status.GetErrorText(tSC))
 }
 
 ClassMethod BuildRow(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.CaseRequest, pSessionId As %Integer) As %DynamicObject

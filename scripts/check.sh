@@ -8,6 +8,8 @@ WEB_PORT="${IRIS_PORT_WEB:-52273}"
 EXPECTED_LOOKUP="${EXPECTED_LOOKUP:-9}"
 FAILS=0
 res() { printf '%-4s %s\n' "$1" "$2"; [ "$1" = "FAIL" ] && FAILS=$((FAILS+1)); return 0; }
+# EXPECT_REPLAY=1: the provider kind must be REPLAY (FAIL otherwise); MOCK on a local host is allowed without it
+EXPECT_REPLAY="${EXPECT_REPLAY:-0}"
 
 if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" = "true" ]; then
   res OK "container $CONTAINER running"
@@ -21,7 +23,8 @@ printf '%s\n' \
   'set st="" set sc=##class(Ens.Director).GetProductionStatus(.pn,.st) write "PROD=",pn,"|",st,!' \
   'set n=0,k="" for { set k=$order(^Ens.LookupTable("IOA.LabCodeMap",k)) quit:k=""  set n=n+1 } write "LOOKUP=",n,!' \
   'write "SOD=",$data(^Ens.LookupTable("IOA.LabCodeMap","SOD"))," HB=",$data(^Ens.LookupTable("IOA.LabCodeMap","HB")),!' \
-  'write "MODE=",##class(InteropOps.Config.LLMConfig).Mode()," PROFILE=",##class(InteropOps.Config.LLMConfig).Profile()," KEY=",$select(##class(InteropOps.Config.LLMConfig).KeyPresent():"set",1:"unset"),!' \
+  'write "MODE=",##class(InteropOps.Config.LLMConfig).Mode()," PROFILE=",##class(InteropOps.Config.LLMConfig).Profile(),!' \
+  'do ##class(InteropOps.Config.LLMConfig).PrintStatus()' \
   'write "REPORT=",##class(%Dictionary.CompiledMethod).%ExistsId("InteropOps.Data.Decision||ReportJSON"),!' \
   'halt' \
   | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$OUT" 2>&1
@@ -56,10 +59,38 @@ fi
 
 MODE_LINE="$(sed -n 's/^MODE=//p' "$OUT" | tr -d '\r' | tail -n 1)"
 MODE="${MODE_LINE%% *}"
+# Key: only YES/NO flags from PrintStatus, never values
+KEY_PRESENT="$(val KEY_PRESENT)"
+KEY_CONFIGURED="$(val KEY_CONFIGURED)"; KEY_CONFIGURED="${KEY_CONFIGURED%% *}"
+KEY_VAR="$(val KEY_VAR)"
+if [ "$KEY_PRESENT" = "YES" ]; then
+  KEY_TXT="set in IRIS process"
+elif [ "$KEY_CONFIGURED" = "YES" ]; then
+  KEY_TXT="configured in .env only (container not recreated?)"
+else
+  KEY_TXT="unset"
+fi
 if [ "$MODE" = "REPLAY" ] || [ "$MODE" = "LIVE" ]; then
-  res OK "mode $MODE_LINE" | sed 's/ PROFILE=/, profile /; s/ KEY=/, key: /'
+  res OK "mode $MODE_LINE, key${KEY_VAR:+ $KEY_VAR}: $KEY_TXT" | sed 's/ PROFILE=/, profile /'
 else
   res FAIL "mode unresolved (LLMConfig missing?)"
+fi
+[ "$KEY_PRESENT" != "YES" ] && [ "$KEY_CONFIGURED" = "YES" ] && res WARN "key in .env but not in container -> ./run.sh (REPLAY does not need a key)"
+KIND="$(val PROVIDER_KIND)"
+MODE_WARNING="$(val MODE_WARNING)"
+KIND_WARNING="$(val KIND_WARNING)"
+# Warnings are informational (not counted as FAIL)
+[ -n "$MODE_WARNING" ] && res WARN "$MODE_WARNING"
+[ -n "$KIND_WARNING" ] && res WARN "$KIND_WARNING"
+# FAIL only if REPLAY was expected (EXPECT_REPLAY=1) and kind is not REPLAY, or kind LIVE while Mode() is REPLAY
+if [ "$EXPECT_REPLAY" = "1" ] && [ "$KIND" != "REPLAY" ]; then
+  res FAIL "REPLAY expected (EXPECT_REPLAY=1), but provider kind is ${KIND:-?}"
+elif [ "$MODE" = "REPLAY" ] && [ "$KIND" = "LIVE" ]; then
+  res FAIL "Mode() is REPLAY, but provider kind is LIVE"
+elif [ "$KIND" = "MOCK" ]; then
+  res OK "provider kind MOCK (local mock, no paid calls)"
+elif [ -n "$KIND" ]; then
+  res OK "provider kind $KIND"
 fi
 
 [ "$(val REPORT)" = "1" ] && res OK "Decision.ReportJSON compiled" || res FAIL "Decision.ReportJSON missing (run ./scripts/reload.sh)"

@@ -53,7 +53,7 @@ ClassMethod FromSession(pRequest As InteropOps.Msg.AgentRequest, pSystem As %Str
     Set tC = ..Base(pRequest.CaseId, pRequest.FirstMSH10, ..PromptSHA(pSystem, pUser), $ZCONVERT(pKind, "L"), pProfile, pModel, tTurns, tD)
     Set tC.usage = {"prompt_tokens": (pResponse.PromptTokens), "completion_tokens": (pResponse.CompletionTokens)}
     Set tC."llm_calls" = pResponse.LLMCalls
-    Set:pResponse.ErrorKind'="" tC.error = {"kind": (pResponse.ErrorKind), "text": ($EXTRACT(pResponse.Error, 1, 500))}
+    Set:pResponse.ErrorKind'="" tC.error = {"kind": (pResponse.ErrorKind), "text": (##class(InteropOps.Util.Redact).Text(pResponse.Error))}
     Return tC
 }
 

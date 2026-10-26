@@ -11,7 +11,24 @@ Parameter INVOCATION = "Queue";
 Method OnMessage(pRequest As InteropOps.Msg.ApplyRequest, Output pResponse As InteropOps.Msg.ApplyResponse) As %Status
 {
     Set pResponse = ##class(InteropOps.Msg.ApplyResponse).%New()
-    Set tRes = ..Run(pRequest.CaseId, {}.%FromJSON(pRequest.DecisionJSON), $THIS)
+    If pRequest.TaskId '= "" {
+        Set tN = 0
+        &sql(SELECT COUNT(*) INTO :tN FROM InteropOps_Data.Decision WHERE TaskId = :pRequest.TaskId)
+        If SQLCODE < 0 {
+            Set pResponse.ResultJSON = {"applied": "", "error": ("sql " _ SQLCODE _ " " _ $GET(%msg))}.%ToJSON()
+            Return $$$OK
+        }
+        If 'tN {
+            Set pResponse.ResultJSON = {"applied": "", "skipped": "no Decision row for task (purged)"}.%ToJSON()
+            $$$LOGWARNING("apply " _ pRequest.CaseId _ " skipped: " _ pResponse.ResultJSON)
+            Return $$$OK
+        }
+    }
+    Try {
+        Set tRes = ..Run(pRequest.CaseId, {}.%FromJSON(pRequest.DecisionJSON), $THIS)
+    } Catch tEx {
+        Set tRes = {"applied": "", "error": ($EXTRACT(tEx.DisplayString(), 1, 500))}
+    }
     Set pResponse.ResultJSON = tRes.%ToJSON()
     $$$LOGINFO("apply " _ pRequest.CaseId _ ": " _ pResponse.ResultJSON)
     Return $$$OK

@@ -74,7 +74,7 @@ ClassMethod GetDynVal(pObj As %DynamicObject, pKey1 As %String, pKey2 As %String
 }
 
 /// 1 if this row comes from a dev-mock run: GateDetail.provider_kind="MOCK" (or agent.provider_kind),
-/// else (rules rows: "none (rules)") whether the dev mock override ^IOA.Dev("mock_base_url") is set.
+/// else (rules rows: "none (rules)") whether ProviderFactory.Kind() is MOCK (an ignored mock URL is not MOCK).
 ClassMethod IsMockRun(pGateDetail As %String = "") As %Boolean
 {
     set kind = ""
@@ -88,7 +88,7 @@ ClassMethod IsMockRun(pGateDetail As %String = "") As %Boolean
         }
     }
     if $listfind($listbuild("MOCK", "REPLAY", "LIVE"), kind) { quit (kind = "MOCK") }
-    quit ($zstrip($get(^IOA.Dev("mock_base_url")), "<>W") '= "")
+    quit (##class(InteropOps.Agent.ProviderFactory).Kind() = "MOCK")
 }
 
 /// Record a decision row from a %DynamicObject and save it.
@@ -122,8 +122,8 @@ ClassMethod Record(pData As %DynamicObject, Output pId As %Integer) As %Status
         set modeVal = ##class(InteropOps.Config.LLMConfig).Mode()
     }
     // Honest mode: callers pass LLMConfig.Mode() (REPLAY|LIVE); a dev-mock run is MOCK
-    // (GateDetail.provider_kind=MOCK, or ^IOA.Dev("mock_base_url") set, as in ProviderFactory.Kind()).
-    if (modeVal = "REPLAY") && ..IsMockRun(..GetDynVal(pData, "gateDetail", "GateDetail")) {
+    // (GateDetail.provider_kind=MOCK, else ProviderFactory.Kind()=MOCK); MOCK may run with Mode() LIVE or REPLAY.
+    if (modeVal '= "MOCK") && ..IsMockRun(..GetDynVal(pData, "gateDetail", "GateDetail")) {
         set modeVal = "MOCK"
     }
     set rec.Mode = modeVal
@@ -264,6 +264,32 @@ ClassMethod ParseOrText(pText As %String, pArray As %Boolean = 0) [ Private ]
 ClassMethod Purge() As %Status
 {
     quit ..%KillExtent()
+}
+
+/// Smoke-test cleanup (scripts/smoke_generic.sh): delete ONE row by id, only if its MSH10 equals pMsh10 and its
+/// CaseId is not a demo case (Cnn), then kill ^IOA.Batch of that CaseId. Writes SMOKE_DELETED=1|0 (reason).
+ClassMethod DeleteSmokeRow(pId As %Integer, pMsh10 As %String) As %Boolean
+{
+    set ok = 0, why = ""
+    set obj = $select(+pId > 0: ..%OpenId(+pId), 1: "")
+    if '$isobject(obj) {
+        set why = "no row " _ pId
+    } elseif ($zstrip(pMsh10, "<>W") = "") || (obj.MSH10 '= pMsh10) {
+        set why = "MSH10 mismatch"
+    } elseif ($zstrip(obj.CaseId, "<>W") = "") || (##class(InteropOps.Util.Ids).CaseIdFromMSH10(obj.CaseId) '= "") {
+        set why = "demo or empty CaseId, refused"
+    } else {
+        set case = obj.CaseId, obj = ""
+        set sc = ..%DeleteId(+pId)
+        if $$$ISOK(sc) {
+            kill ^IOA.Batch(case)
+            set ok = 1
+        } else {
+            set why = $system.Status.GetErrorText(sc)
+        }
+    }
+    write "SMOKE_DELETED=", ok, $select(why '= "": " (" _ why _ ")", 1: ""), !
+    quit ok
 }
 
 }

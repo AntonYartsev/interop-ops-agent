@@ -4,9 +4,11 @@
 #                          volumes of THIS project only; images and the repo bind mount are kept)
 #   2. ./run.sh           (load/tag image if needed, compose up, compile, start the production)
 #   3. scripts/demo.sh --replay   (12 cases from cassettes, no LLM API calls)
-#   4. scripts/check.sh
+#   4. EXPECT_REPLAY=1 scripts/check.sh   (provider kind must be REPLAY)
+#   5. scripts/smoke_generic.sh   (a non-Cnn file name/MSH-10 gets a CaseId and a final rules decision; runs
+#                                  after check, removes its own Decision row, so the 12-case score is unaffected)
 # Each step and the total are timed. Last line:
-#   CLEAN_RUN: OK  score 11/12  mode REPLAY  llm_calls 0  total 4m12s
+#   CLEAN_RUN: OK  score 11/12  mode REPLAY  llm_calls 0  smoke OK  total 4m12s
 #   CLEAN_RUN: FAIL  step <name>  ...
 # Step 1 destroys the IRIS container state, so it only runs with --yes. Without --yes the script runs the
 # read-only safety checks, prints what it would do and exits 2. Bash 3.2 compatible.
@@ -89,7 +91,8 @@ if [ "$YES" -ne 1 ]; then
   echo "  1. scripts/clean.sh          -> docker compose -p ${PROJECT} down -v"
   echo "  2. ./run.sh                  -> image load/tag if needed, compose up -d --build, compile, start production"
   echo "  3. scripts/demo.sh --replay  -> 12 cases from replay/ cassettes, no LLM API calls"
-  echo "  4. scripts/check.sh"
+  echo "  4. EXPECT_REPLAY=1 scripts/check.sh -> FAIL unless provider kind is REPLAY"
+  echo "  5. scripts/smoke_generic.sh  -> one generic lab-feed-<date>.hl7 (no Cnn ids), final rules decision, cleans up its row"
   echo "Step 1 deletes the IRIS container state of ${PROJECT}. Re-run with --yes to do it."
   echo "CLEAN_RUN: NOT RUN (dry run, no --yes)"
   exit 2
@@ -115,14 +118,16 @@ step() { # $1 = name, rest = command
 step clean ./scripts/clean.sh
 step run ./run.sh
 step demo ./scripts/demo.sh --replay
-step check ./scripts/check.sh
+step check env EXPECT_REPLAY=1 ./scripts/check.sh
+step smoke ./scripts/smoke_generic.sh
 
 DEMO_LOG="${LOG_DIR}/demo.log"
 SCORE="$(sed -n 's/^correct \([0-9]*\/[0-9]*\).*/\1/p' "$DEMO_LOG" | tail -n 1)"
 MODE="$(sed -n 's/^Mode: \([A-Z]*\) (from Decision rows.*/\1/p' "$DEMO_LOG" | tail -n 1)"
 CALLS="$(sed -n 's/^Mode: .*LLM calls: \([0-9]*\).*/\1/p' "$DEMO_LOG" | tail -n 1)"
 grep -q '^CHECK: OK' "${LOG_DIR}/check.log" || fail check "CHECK: OK missing; log ${LOG_DIR}/check.log"
+grep -q '^SMOKE_GENERIC: OK' "${LOG_DIR}/smoke.log" || fail smoke "SMOKE_GENERIC: OK missing; log ${LOG_DIR}/smoke.log"
 [ "$MODE" = "REPLAY" ] || fail demo "mode ${MODE:-?} (expected REPLAY)"
 [ "${CALLS:-x}" = "0" ] || fail demo "llm_calls ${CALLS:-?} (expected 0)"
 echo "Steps: ${TIMES}"
-echo "CLEAN_RUN: OK  score ${SCORE:-?}  mode ${MODE}  llm_calls ${CALLS}  total $(fmt $SECONDS)"
+echo "CLEAN_RUN: OK  score ${SCORE:-?}  mode ${MODE}  llm_calls ${CALLS}  smoke OK  total $(fmt $SECONDS)"

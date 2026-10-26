@@ -31,7 +31,7 @@ Method %LogExecution(call As %DynamicObject, metadata As %DynamicObject, result 
         Set ^||IOAToolCalls(n) = {"tool": (tTool), "arguments": (tArgs), "duration_ms": (+duration)}.%ToJSON()
         Set ^||IOAToolCalls(n, "result") = tResult
     } Catch ex {
-        $$$LOGERROR("[IOA.TraceAuditPolicy] " _ $SYSTEM.Status.GetErrorText(ex.AsStatus()))
+        $$$LOGERROR("[IOA.TraceAuditPolicy] " _ ##class(InteropOps.Util.Redact).Text($SYSTEM.Status.GetErrorText(ex.AsStatus())))
     }
     Return $$$OK
 }

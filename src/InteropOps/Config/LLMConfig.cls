@@ -63,7 +63,27 @@ ClassMethod IsKeyPresent(pKeyVar As %String, ByRef pOverrides) As %Boolean
     quit 0
 }
 
-/// Whether the API key for the active profile is present (1 or 0).
+/// Whether the IRIS process itself sees a non-empty pKeyVar ($SYSTEM.Util.GetEnviron), or a test override.
+/// This is what "@{env:VAR}" resolves from, so it is the only key check that may enable LIVE.
+/// No ^IOA.Config("key_present") flag, no .env fallback (both can say "present" while the process has no key).
+/// Never stores or returns the secret key itself.
+ClassMethod ProcessKeyPresent(pKeyVar As %String, ByRef pOverrides) As %Boolean
+{
+    if (pKeyVar = "") {
+        quit 0
+    }
+    if $isobject($get(pOverrides)) {
+        if pOverrides.%IsDefined(pKeyVar) {
+            quit ($zstrip(pOverrides.%Get(pKeyVar), "<>W") '= "")
+        }
+    }
+    if $data(pOverrides(pKeyVar))#2 {
+        quit ($zstrip(pOverrides(pKeyVar), "<>W") '= "")
+    }
+    quit ($zstrip($SYSTEM.Util.GetEnviron(pKeyVar), "<>W") '= "")
+}
+
+/// Whether the IRIS process sees the API key of the active profile (1 or 0), see ProcessKeyPresent.
 /// Never returns or logs the secret key itself.
 ClassMethod KeyPresent(ByRef pOverrides) As %Boolean
 {
@@ -162,12 +182,35 @@ ClassMethod ModeFor(pConfigComplete As %Boolean, pKeyPresent As %Boolean, pLive 
     quit $select((+pConfigComplete && +pKeyPresent && +pLive && '+pForceReplay):"LIVE", 1:"REPLAY")
 }
 
+/// Pure: warning text when LIVE was requested but cannot be used, "" otherwise. Names the variable, never a value.
+ClassMethod ModeWarningFor(pConfigComplete As %Boolean, pKeyPresent As %Boolean, pLive As %Boolean, pForceReplay As %Boolean, pKeyVar As %String) As %String
+{
+    quit:('+pLive)||(+pForceReplay) ""
+    quit:'+pConfigComplete "LIVE requested but the model of the active profile is empty -> REPLAY"
+    quit:'+pKeyPresent "LIVE requested but " _ pKeyVar _ " not set in IRIS process -> REPLAY"
+    quit ""
+}
+
+/// Current mode warning ("" = none), for demo.sh / check.sh / PrintStatus. Never contains a key value.
+ClassMethod ModeWarning() As %String
+{
+    do ..Resolve(.cfg)
+    quit $get(cfg("warning"))
+}
+
 /// Active mode: "LIVE" only if active profile key is non-empty AND live is explicitly enabled
 /// (^IOA.Config("live")=1, or env IOA_LIVE=1 when the global is not set) AND REPLAY'=1; otherwise "REPLAY".
-/// MOCK is not a config mode: ProviderFactory.Kind() returns MOCK when ^IOA.Dev("mock_base_url") is set.
+/// LIVE requested but key not in the IRIS process -> REPLAY plus ModeWarning(), logged once per process (Event Log).
+/// MOCK is not a config mode: ProviderFactory.Kind() returns MOCK for an allowed local mock URL unless REPLAY=1 (KindFor).
 ClassMethod Mode() As %String
 {
     do ..Resolve(.cfg)
+    set warn = $get(cfg("warning"))
+    if (warn '= "") && '$data(^||IOA.ModeWarned(warn)) {
+        // once per process and text: Mode() is called per message and per Decision row
+        set ^||IOA.ModeWarned(warn) = 1
+        try { do ##class(Ens.Util.Log).LogWarning($classname(), "Mode", warn) } catch { }
+    }
     quit $get(cfg("mode"), "REPLAY")
 }
 
@@ -247,7 +290,7 @@ ClassMethod CasesIn() As %String
 /// Default profile is "openai" (provider=openai, keyVar=OPENAI_API_KEY, default model=gpt-5.4-mini, fallback=gpt-4.1-mini).
 /// Alternate profile is "openrouter" (provider=openrouter, keyVar=OPENROUTER_API_KEY, default model=google/gemini-2.5-flash).
 /// LLM_MODEL overrides the profile default model when non-empty.
-/// LIVE mode is strictly opt-in: requires active profile key AND live enabled (^IOA.Config("live") when set, else IOA_LIVE=1) AND REPLAY'=1.
+/// LIVE mode is strictly opt-in: requires the active profile key in the IRIS process env (ProcessKeyPresent) AND live enabled (^IOA.Config("live") when set, else IOA_LIVE=1) AND REPLAY'=1.
 /// REPLAY=1 forces REPLAY mode even when the active profile key and IOA_LIVE=1 are present.
 /// Never includes the raw API key in pConfig or the returned %DynamicObject.
 ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
@@ -272,12 +315,15 @@ ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
     }
 
     set apiKeyRef = "@{env:" _ keyVar _ "}"
-    set keyPresent = ..IsKeyPresent(keyVar, .pOverrides)
+    // LIVE needs the key in the IRIS process env (what "@{env:VAR}" reads); the .env / key_present view is display only
+    set keyPresent = ..ProcessKeyPresent(keyVar, .pOverrides)
+    set keyConfigured = ..IsKeyPresent(keyVar, .pOverrides)
     set liveEnabled = ..IsLiveEnabled(.pOverrides)
     set replayVar = ..GetVar("REPLAY", .pOverrides)
     set forceReplay = ((replayVar = "1") || ($zconvert(replayVar, "L") = "true"))
 
     set mode = ..ModeFor(configComplete, keyPresent, liveEnabled, forceReplay)
+    set warning = ..ModeWarningFor(configComplete, keyPresent, liveEnabled, forceReplay, keyVar)
 
     set rawReplayDir = ..GetVar("IOA_REPLAY_DIR", .pOverrides)
     set replayDir = $select(rawReplayDir="":..#DEFAULTREPLAYDIR, 1:rawReplayDir)
@@ -293,6 +339,8 @@ ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
     set pConfig("keyVar") = keyVar
     set pConfig("apiKeyRef") = apiKeyRef
     set pConfig("keyPresent") = keyPresent
+    set pConfig("keyConfigured") = keyConfigured
+    set pConfig("warning") = warning
     set pConfig("liveEnabled") = liveEnabled
     set pConfig("forceReplay") = forceReplay
     set pConfig("configComplete") = configComplete
@@ -308,6 +356,8 @@ ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
     set result.keyVar = keyVar
     set result.apiKeyRef = apiKeyRef
     set result.keyPresent = $select(keyPresent:1, 1:0)
+    set result.keyConfigured = $select(keyConfigured:1, 1:0)
+    set result.warning = warning
     set result.liveEnabled = $select(liveEnabled:1, 1:0)
     set result.forceReplay = $select(forceReplay:1, 1:0)
     set result.configComplete = $select(configComplete:1, 1:0)
@@ -328,8 +378,12 @@ ClassMethod PrintStatus() As %Status
     write "KEY_VAR=", $get(cfg("keyVar")), !
     write "API_KEY_REF=", $get(cfg("apiKeyRef")), !
     write "KEY_PRESENT=", $select(+$get(cfg("keyPresent")):"YES", 1:"NO"), !
+    write "KEY_CONFIGURED=", $select(+$get(cfg("keyConfigured")):"YES", 1:"NO"), " (process env, key_present flag or .env; display only)", !
     write "LIVE_ENABLED=", $select(+$get(cfg("liveEnabled")):"YES", 1:"NO"), !
     write "LLM_MODE=", $get(cfg("mode")), !
+    write:$get(cfg("warning"))'="" "MODE_WARNING=", cfg("warning"), !
+    write "PROVIDER_KIND=", ##class(InteropOps.Agent.ProviderFactory).Kind(), !
+    write:##class(InteropOps.Agent.ProviderFactory).KindWarning()'="" "KIND_WARNING=", ##class(InteropOps.Agent.ProviderFactory).KindWarning(), !
     write "REPLAY_DIR=", $get(cfg("replayDir")), !
     write "RECORD_ENABLED=", $get(cfg("recordEnabled")), !
     write "CASES_IN=", $get(cfg("casesIn")), !
@@ -349,6 +403,8 @@ ClassMethod PrintStatus() As %Status
 /// 7. openrouter (with key + IOA_LIVE=1) -> LIVE
 /// 8. openai (with key + IOA_LIVE=1 + REPLAY=1) -> REPLAY
 /// 9. openrouter (with key + IOA_LIVE=1 + REPLAY=1) -> REPLAY
+/// 13. live + key in process -> LIVE; live + no key -> REPLAY + ModeWarning; 14. REPLAY=1 env beats MOCK, MOCK needs no key
+/// 15. MOCK host allowlist (ProviderFactory.KindFor); 16. MOCK budget: not testable here (reported)
 ClassMethod CheckSwitching() As %Boolean
 {
     // Guard: refuse while the production is running and cases/in has files (a run may be in progress)
@@ -528,6 +584,49 @@ ClassMethod CheckSwitching() As %Boolean
     set pass12 = ((fA("live") = 1) && (fA("record") = 1) && (fB("live") = 0) && (fB("record") = 0) && ($get(cfg12a("mode")) = "LIVE") && ($get(cfg12b("mode")) = "REPLAY"))
     write "TRANSITION_12_SEED_FROM_ENV=", $select(pass12:"PASS", 1:"FAIL"), " [", seedA, " | ", seedB, "]", !
     if 'pass12 { set allPass = 0 }
+
+    // 13. live requested + key visible to the process (test override) -> LIVE, no warning;
+    //     live requested + key empty -> REPLAY + warning that names the variable (never a value)
+    kill ov
+    set ov("LLM_PROFILE") = "openai", ov("OPENAI_API_KEY") = "test-override-dummy-key", ov("live") = 1, ov("REPLAY") = ""
+    do ..Resolve(.cfg13a, .ov)
+    set ov("OPENAI_API_KEY") = ""
+    do ..Resolve(.cfg13b, .ov)
+    set w13 = $get(cfg13b("warning"))
+    set pass13 = (($get(cfg13a("mode")) = "LIVE") && ($get(cfg13a("warning")) = "") && ($get(cfg13b("mode")) = "REPLAY") && (w13 [ "OPENAI_API_KEY") && (w13 [ "not set in IRIS process") && '(w13 [ "test-override-dummy-key") && (..ModeWarningFor(1, 0, 1, 0, "X_KEY") [ "X_KEY") && (..ModeWarningFor(1, 0, 0, 0, "X_KEY") = "") && (..ModeWarningFor(1, 0, 1, 1, "X_KEY") = ""))
+    write "TRANSITION_13_LIVE_NEEDS_PROCESS_KEY=", $select(pass13:"PASS", 1:"FAIL"), " [", w13, "]", !
+    if 'pass13 { set allPass = 0 }
+
+    // 14. ProviderFactory.KindFor: REPLAY=1 env beats MOCK; MOCK needs no key (Mode()=REPLAY + local mock -> MOCK); no mock URL -> Mode()
+    set pf = "InteropOps.Agent.ProviderFactory", mu = "http://127.0.0.1:18080"
+    set k1 = $classmethod(pf, "KindFor", "LIVE", 1, mu, .w1)
+    set k2 = $classmethod(pf, "KindFor", "REPLAY", 1, mu, .w2)
+    set k3 = $classmethod(pf, "KindFor", "LIVE", 0, "", .w3)
+    set k4 = $classmethod(pf, "KindFor", "REPLAY", 0, "", .w4)
+    set k5 = $classmethod(pf, "KindFor", "REPLAY", 0, mu, .w5)
+    set pass14 = ((k1 = "REPLAY") && (w1 '= "") && (k2 = "REPLAY") && (w2 '= "") && (k3 = "LIVE") && (w3 = "") && (k4 = "REPLAY") && (w4 = "") && (k5 = "MOCK") && (w5 = ""))
+    write "TRANSITION_14_REPLAY_BEATS_MOCK=", $select(pass14:"PASS", 1:"FAIL"), !
+    if 'pass14 { set allPass = 0 }
+
+    // 15. MOCK only for localhost / 127.0.0.1 / host.docker.internal (with or without key); look-alike and userinfo
+    //     hosts are ignored with a warning and fall through to Mode() (LIVE or REPLAY)
+    set ok15 = 1
+    for u = "http://localhost:18080", "http://127.0.0.1:18080/v1", "http://host.docker.internal:18080", "https://LOCALHOST/v1" {
+        set:$classmethod(pf, "KindFor", "LIVE", 0, u, .wu)'="MOCK" ok15 = 0
+        set:$classmethod(pf, "KindFor", "REPLAY", 0, u, .wu)'="MOCK" ok15 = 0
+    }
+    for u = "http://localhost.evil.com:18080", "http://localhost@evil.com", "http://user:pw@localhost:18080", "http://evil.com", "http://evil.com#@localhost", "http://127.0.0.1.evil.com", "ftp://localhost", "localhost:18080", "http://localhost:99999", "http://localhost:80:81", "http://[::1]:18080", "http://local host", "http://localhost\@evil.com" {
+        set ku = $classmethod(pf, "KindFor", "LIVE", 0, u, .wu)
+        set:(ku'="LIVE")||(wu="") ok15 = 0
+        set ku = $classmethod(pf, "KindFor", "REPLAY", 0, u, .wu)
+        set:(ku'="REPLAY")||(wu="") ok15 = 0
+    }
+    write "TRANSITION_15_MOCK_HOST_ALLOWLIST=", $select(ok15:"PASS", 1:"FAIL"), !
+    if 'ok15 { set allPass = 0 }
+
+    // 16. MOCK budget: the ^IOA.Budget cap is applied in InteropOps.Agent.Operation (kind LIVE only) and cannot be
+    //     tested here without a provider; reported, not counted in CHECK_SWITCHING.
+    write "TRANSITION_16_MOCK_BUDGET=NOT_TESTED (cap in Agent.Operation applies to kind LIVE)", !
 
     // Real settings must be exactly as before (no test writes ^IOA.Config)
     set after = ..RealFlagsSnapshot()

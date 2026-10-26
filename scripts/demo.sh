@@ -147,10 +147,15 @@ trap cleanup_live EXIT INT TERM
 printf '%s\n' \
   'do ##class(InteropOps.Setup).SyncEnvToGlobal()' \
   'write "KEY_PRESENT=",##class(InteropOps.Config.LLMConfig).KeyPresent(),!' \
+  'do ##class(InteropOps.Config.LLMConfig).Resolve(.ioacfg) write "KEY_CONFIGURED=",+$get(ioacfg("keyConfigured")),!' \
   'write "HAS_DECISION_REPORT=",(##class(%Dictionary.CompiledClass).%ExistsId("InteropOps.Data.Decision")&&##class(%Dictionary.CompiledMethod).%ExistsId("InteropOps.Data.Decision||ReportJSON")),!' \
   'halt' \
   | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$TMP_OUT" 2>&1 || true
 
+# Key flags only (1/0), never values. REPLAY does not need a key, so this is a hint, not an error.
+if ! grep -q "KEY_PRESENT=1" "$TMP_OUT" && grep -q "KEY_CONFIGURED=1" "$TMP_OUT"; then
+  echo "HINT: key in .env but not in container -> ./run.sh" >&2
+fi
 if [ "$LIVE_FLAG" = "1" ] && ! grep -q "KEY_PRESENT=1" "$TMP_OUT"; then
   echo "ERROR: --live requested, but active profile key (${ACTIVE_KEY_VAR}) is unset in IRIS. Refusing LIVE mode." >&2
   exit 1
@@ -179,6 +184,9 @@ printf '%s\n' \
   'write "ACTIVE_LLM_MODE=",##class(InteropOps.Config.LLMConfig).Mode(),!' \
   'write "AUTOAPPROVE=",##class(InteropOps.Config.LLMConfig).AutoApprove(),!' \
   'write "ACTIVE_KIND=",##class(InteropOps.Agent.ProviderFactory).Kind(),!' \
+  'write "MODE_WARNING=",##class(InteropOps.Config.LLMConfig).ModeWarning(),!' \
+  'write "MOCK_URL=",$get(^IOA.Dev("mock_base_url")),!' \
+  'write "KIND_WARNING=",##class(InteropOps.Agent.ProviderFactory).KindWarning(),!' \
   'write "ACTIVE_MODEL=",##class(InteropOps.Config.LLMConfig).Model(),!' \
   'write "ACTIVE_RECORD=",##class(InteropOps.Config.LLMConfig).RecordEnabled(),!' \
   'halt' \
@@ -194,6 +202,11 @@ ACTIVE_MODEL="$(sed -n 's/^ACTIVE_MODEL=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1
 ACTIVE_RECORD="$(sed -n 's/^ACTIVE_RECORD=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
 # What IRIS itself reports (not what the flags asked for), so an accidental MOCK or LIVE is visible
 echo "IRIS Mode(): ${ACTIVE_LLM_MODE:-?}  provider kind (ProviderFactory.Kind()): ${ACTIVE_KIND:-?}  record: ${ACTIVE_RECORD:-?}"
+# Why IRIS fell back (texts name variables only, never key values)
+ACTIVE_MODE_WARNING="$(sed -n 's/^MODE_WARNING=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
+ACTIVE_KIND_WARNING="$(sed -n 's/^KIND_WARNING=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
+[ -n "$ACTIVE_MODE_WARNING" ] && echo "WARN: $ACTIVE_MODE_WARNING" >&2
+[ -n "$ACTIVE_KIND_WARNING" ] && echo "WARN: $ACTIVE_KIND_WARNING" >&2
 if [ -z "$ACTIVE_KIND" ] || [ -z "$ACTIVE_LLM_MODE" ]; then
   echo "WARNING: could not read Mode()/Kind() from IRIS (session output in ${TMP_OUT})." >&2
 elif [ "$ACTIVE_KIND" = "MOCK" ]; then
@@ -205,7 +218,16 @@ case "$LIVE_FLAG" in
   0) LIVE_SRC="--replay" ;;
   *) LIVE_SRC="env (IOA_LIVE) after reset" ;;
 esac
-if [ "$ACTIVE_LLM_MODE" = "LIVE" ]; then
+ACTIVE_MOCK_URL="$(sed -n 's/^MOCK_URL=//p' "$TMP_OUT" | tr -d '\r' | tail -n 1)"
+if [ "$ACTIVE_KIND" = "MOCK" ]; then
+  echo "##################################################################"
+  echo "##                                                              ##"
+  echo "##   M O C K   -   local mock LLM, no paid calls                ##"
+  echo "##                                                              ##"
+  echo "##################################################################"
+  echo "MOCK: calls local mock at ${ACTIVE_MOCK_URL:-?}, no paid calls (dummy key; real key not sent)"
+  echo "MOCK: IRIS Mode()=${ACTIVE_LLM_MODE:-?}, record=${ACTIVE_RECORD:-0}"
+elif [ "$ACTIVE_LLM_MODE" = "LIVE" ]; then
   # Estimate only: token usage recorded in the cassettes x assumed prices (PRICE_IN / PRICE_OUT, USD per 1M tokens)
   EST_USD="$(PRICE_IN="${PRICE_IN:-0.75}" PRICE_OUT="${PRICE_OUT:-4.50}" python3 - "$EXPECTED_REPLAY_DIR" <<'PY' 2>/dev/null || echo "?"
 import glob, json, os, sys

@@ -107,7 +107,7 @@ Method RunAgent(pRequest As InteropOps.Msg.AgentRequest, pResponse As InteropOps
     Do:tLive ..Settle(tMaxIt, tCalls, pResponse.PromptTokens, pResponse.CompletionTokens)
     If tErr '= "" {
         Do ..Fail(pResponse, ..ErrorKind(tErr), tErr)
-        $$$LOGWARNING("[IOA.Agent] " _ pResponse.ErrorKind _ ": " _ tErr)
+        $$$LOGWARNING("[IOA.Agent] " _ pResponse.ErrorKind _ ": " _ pResponse.Error)
     } Else {
         Set pResponse.RawAnswer = tResp.Content
         Set tDecision = ..Validate(..ExtractJSONObject($ZSTRIP(tResp.Content, "<>W")), .tWhy)
@@ -119,7 +119,7 @@ Method RunAgent(pRequest As InteropOps.Msg.AgentRequest, pResponse As InteropOps
             Set tFile = ##class(InteropOps.Agent.Cassette).Write(##class(InteropOps.Agent.Cassette).FromSession(pRequest, ..SystemPrompt(), tUser, tSession.GetContext(), tStats, pResponse, ..ProviderKind, ..Profile, ..Model))
             Set pResponse.CassetteJSON = {"recorded": (tFile)}.%ToJSON()
         } Catch ex {
-            $$$LOGWARNING("[IOA.Agent] cassette not written: " _ $SYSTEM.Status.GetErrorText(ex.AsStatus()))
+            $$$LOGWARNING("[IOA.Agent] cassette not written: " _ ##class(InteropOps.Util.Redact).Text($SYSTEM.Status.GetErrorText(ex.AsStatus())))
         }
     }
 }
@@ -155,7 +155,7 @@ ClassMethod ErrorKind(pErr As %String) As %String
 /// Stop without a usable answer -> escalate
 ClassMethod Fail(pResponse As InteropOps.Msg.AgentResponse, pKind As %String, pText As %String)
 {
-    Set pResponse.ErrorKind = pKind, pResponse.Error = pText, pResponse.Valid = 0, pResponse.InvalidReason = pKind
+    Set pResponse.ErrorKind = pKind, pResponse.Error = ##class(InteropOps.Util.Redact).Text(pText), pResponse.Valid = 0, pResponse.InvalidReason = pKind
     Set pResponse.DecisionJSON = {"action": "escalate", "target": null, "reason": ("agent stopped without an answer: " _ pKind), "evidence": []}.%ToJSON()
 }
 
