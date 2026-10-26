@@ -1,0 +1,76 @@
+{
+ "sender": "REGIONAL_LAB",
+ "message_type": "ORU^R01",
+ "version": "2.5.1",
+ "required_fields": {
+  "mrn": {
+   "segment": "PID",
+   "source_field": "PID-3",
+   "format_regex": "^MRN-\\d{6}(\\^\\^\\^REGIONAL_LAB\\^MR)?$",
+   "description": "Patient Medical Record Number"
+  }
+ },
+ "optional_target_fields": {},
+ "ucum_conversions": [
+  {
+   "canonical_code": "2345-7",
+   "from_unit": "mmol/L",
+   "to_unit": "mg/dL",
+   "factor": 18.0,
+   "note": "Molar to mass conversion for Glucose (MW 180.16 g/mol)"
+  },
+  {
+   "canonical_code": "2345-7",
+   "from_unit": "mg/dL",
+   "to_unit": "mmol/L",
+   "factor": 0.0555,
+   "note": "Mass to molar conversion for Glucose"
+  },
+  {
+   "canonical_code": "2160-0",
+   "from_unit": "umol/L",
+   "to_unit": "mg/dL",
+   "factor": 0.01131,
+   "note": "Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)"
+  },
+  {
+   "canonical_code": "2160-0",
+   "from_unit": "mg/dL",
+   "to_unit": "umol/L",
+   "factor": 88.4,
+   "note": "Mass to molar conversion for Creatinine"
+  },
+  {
+   "canonical_code": "*",
+   "from_unit": "g/L",
+   "to_unit": "g/dL",
+   "factor": 0.1,
+   "note": "Metric prefix conversion (grams per liter to grams per deciliter)"
+  },
+  {
+   "canonical_code": "*",
+   "from_unit": "g/dL",
+   "to_unit": "g/L",
+   "factor": 10.0,
+   "note": "Metric prefix conversion (grams per deciliter to grams per liter)"
+  },
+  {
+   "canonical_code": "*",
+   "from_unit": "mg/L",
+   "to_unit": "mg/dL",
+   "factor": 0.1,
+   "note": "Metric prefix conversion (milligrams per liter to milligrams per deciliter)"
+  }
+ ],
+ "known_segments": [
+  "MSH",
+  "PID",
+  "ORC",
+  "OBR",
+  "OBX",
+  "NTE"
+ ],
+ "unit_conversions": {},
+ "field_moves": {},
+ "segment_mappings": {}
+}

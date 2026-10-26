@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+*.log
+logs/
+cases/in/
+cases/archive/
+__pycache__/

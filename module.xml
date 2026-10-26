@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+  <Document name="interop-ops-agent.ZPM">
+    <Module>
+      <Name>interop-ops-agent</Name>
+      <Version>0.1.0</Version>
+      <Description>InterSystems IRIS AI Hub EAP Interop Ops Agent</Description>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <Resource Name="InteropOps.PKG"/>
+    </Module>
+  </Document>
+</Export>

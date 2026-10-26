@@ -1,0 +1,15 @@
+zn "%SYS"
+do ##class(Security.Users).UnExpireUserPasswords("*")
+do ##class(Security.Services).Get("%Service_CallIn",.prop)
+set prop("Enabled")=1
+set prop("AutheEnabled")=48
+do ##class(Security.Services).Modify("%Service_CallIn",.prop)
+if '##class(%Library.EnsembleMgr).IsEnsembleNamespace("IRISAPP") do ##class(%Library.EnsembleMgr).EnableNamespace("IRISAPP", 0)
+do ##class(Security.Applications).Get("/csp/irisapp",.app)
+set app("DeepSeeEnabled")=1
+do ##class(Security.Applications).Modify("/csp/irisapp",.app)
+do ##class(%Library.EnsembleMgr).EnableDeepSee("/csp/irisapp")
+zn "IRISAPP"
+do $SYSTEM.OBJ.ImportDir("/home/irisowner/dev/src", "*.cls", "ck", .errors, 1)
+do ##class(Ens.Director).SetAutoStart("InteropOps.Production")
+halt

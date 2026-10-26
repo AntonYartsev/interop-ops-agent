@@ -1,0 +1,37 @@
+name: interop-ops-agent
+
+services:
+  iris:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: interop-ops-agent-iris-1
+    env_file:
+      - .env
+    restart: always
+    environment:
+      - ISC_CPF_MERGE_FILE=/home/irisowner/dev/merge.cpf
+      - LLM_PROFILE=${LLM_PROFILE:-openai}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - IOA_LIVE=${IOA_LIVE:-0}
+      - REPLAY=${REPLAY:-}
+      - IOA_RECORD=${IOA_RECORD:-0}
+      - IOA_CASES_IN=${IOA_CASES_IN:-/irisdev/app/cases/in/}
+      - IOA_REPLAY_DIR=${IOA_REPLAY_DIR:-/irisdev/app/replay}
+      - IOA_REVIEWER_USER=${IOA_REVIEWER_USER:-reviewer}
+      - IOA_REVIEWER_PASSWORD=${IOA_REVIEWER_PASSWORD:-}
+    ports:
+      - "${IRIS_PORT_SUPER:-51272}:1972"
+      - "${IRIS_PORT_WEB:-52273}:52773"
+      - "${IRIS_PORT_AUX:-52280}:8080"
+    volumes:
+      - ./:/home/irisowner/dev
+      - ./:/irisdev/app
+    healthcheck:
+      test: ["CMD-SHELL", "iris qlist IRIS | grep -qi running && wget -q -O /dev/null http://localhost:52773/csp/sys/UtilHome.csp"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s

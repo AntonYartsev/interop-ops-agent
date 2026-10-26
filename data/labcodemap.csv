@@ -1,0 +1,11 @@
+# SYNTHETIC seeds from spike-v2 lookup_table.json. Lookup value = canonical_code (LOINC). SOD/HB intentionally absent (cases C01/C12).
+local_code,canonical_code,canonical_name,short_name,expected_unit,ref_range,panel
+GLU,2345-7,Glucose [Mass/volume] in Serum or Plasma,Glucose,mmol/L,3.9-5.8,BMP
+NA,2951-2,Sodium [Moles/volume] in Serum or Plasma,Sodium,mmol/L,135-145,BMP
+K,2823-3,Potassium [Moles/volume] in Serum or Plasma,Potassium,mmol/L,3.5-5.1,BMP
+CREAT,2160-0,Creatinine [Mass/volume] in Serum or Plasma,Creatinine,umol/L,53-106,BMP
+BUN,3094-0,Urea nitrogen [Mass/volume] in Serum or Plasma,Urea nitrogen,mg/dL,7-20,BMP
+WBC,6690-2,Leukocytes [#/volume] in Blood,White Blood Cells,10*3/uL,4.5-11.0,CBC
+HGB,718-7,Hemoglobin [Mass/volume] in Blood,Hemoglobin,g/dL,12.0-17.5,CBC
+HCT,4544-3,Hematocrit [Volume Fraction] of Blood,Hematocrit,%,36.0-50.0,CBC
+PLT,777-3,Platelets [#/volume] in Blood,Platelets,10*3/uL,150-400,CBC
