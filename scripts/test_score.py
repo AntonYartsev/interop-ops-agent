@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cross-check scripts/score_demo.py against the spike's frozen scorer (score.py, prereg.md).
 
-Reads Agent.json and A.json (the spike's run results) from tests/fixtures/ (read-only copies of
+Reads Agent.json and A.json (the spike's run results) from tests/fixtures/ (trimmed copies of
 spike-v2-message-path/results/, sha256 in tests/fixtures/README.md), converts every case into a row in
 Decision.ReportJSON format (CaseId, MSH10 like C06-MSG031, Source, Action, Target, Factor, Reason, GateResult,
 GateDetail, Evidence, FinalStatus, ...), pipes the rows through score_demo.py and asserts the spike's numbers:

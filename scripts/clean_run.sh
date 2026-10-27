@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Clean run from scratch, as a judge would do it:
-#   1. scripts/clean.sh   (docker compose -p interop-ops-agent down -v: containers, network and anonymous
+#   1. docker compose -p interop-ops-agent down -v   (containers, network and anonymous
 #                          volumes of THIS project only; images and the repo bind mount are kept)
 #   2. ./run.sh           (load/tag image if needed, compose up, compile, start the production)
 #   3. scripts/demo.sh --replay   (12 cases from cassettes, no LLM API calls)
@@ -41,7 +41,6 @@ fail() { echo "CLEAN_RUN: FAIL  step $1  ($2)  total $(fmt $SECONDS)"; exit 1; }
 command -v docker >/dev/null 2>&1 || fail safety "docker not found"
 docker info >/dev/null 2>&1 || fail safety "docker daemon not reachable"
 grep -q "^name: ${PROJECT}\$" docker-compose.yml || fail safety "docker-compose.yml project name is not ${PROJECT}"
-grep -q "docker compose -p ${PROJECT} down -v\$" scripts/clean.sh || fail safety "scripts/clean.sh is not 'docker compose -p ${PROJECT} down -v'"
 if grep -Eq '^[[:space:]]*external:[[:space:]]*true' docker-compose.yml; then
   fail safety "docker-compose.yml declares an external volume/network (could be shared with another project)"
 fi
@@ -88,7 +87,7 @@ echo "Safety: OK (only project ${PROJECT} is affected)"
 
 if [ "$YES" -ne 1 ]; then
   echo "DRY RUN: would run, in order:"
-  echo "  1. scripts/clean.sh          -> docker compose -p ${PROJECT} down -v"
+  echo "  1. docker compose -p ${PROJECT} down -v"
   echo "  2. ./run.sh                  -> image load/tag if needed, compose up -d --build, compile, start production"
   echo "  3. scripts/demo.sh --replay  -> 12 cases from replay/ cassettes, no LLM API calls"
   echo "  4. EXPECT_REPLAY=1 scripts/check.sh -> FAIL unless provider kind is REPLAY"
@@ -115,7 +114,7 @@ step() { # $1 = name, rest = command
   echo "   ok in $(fmt $dt)"
 }
 
-step clean ./scripts/clean.sh
+step clean docker compose -p "${PROJECT}" down -v
 step run ./run.sh
 step demo ./scripts/demo.sh --replay
 step check env EXPECT_REPLAY=1 ./scripts/check.sh

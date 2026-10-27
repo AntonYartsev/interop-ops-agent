@@ -2,7 +2,7 @@ ARG IMAGE=irishealth-aihub:2026.3.0AI.154.0
 FROM ${IMAGE} AS iris
 
 # .NET 8 build of the PEX operation Hl7Check (NHapi), against the IRIS .NET SDK of this image
-# (pex/integration/Dockerfile.hl7check.fragment; NuGet restore needs network at build time).
+# (NuGet restore needs network at build time).
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS hl7build
 COPY --from=iris /usr/irissys/dev/dotnet/bin/net8.0/ /irissdk/
 COPY pex/dotnet/Hl7Check/ /src-hl7/

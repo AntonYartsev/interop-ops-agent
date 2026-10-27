@@ -23,6 +23,8 @@ XData ProductionDefinition
   </Item>
   <Item Name="IOA.Workflow" Category="InteropOps" ClassName="InteropOps.Workflow.Operation" PoolSize="1" Enabled="true" Foreground="false" Comment="Inbox task for role IOA-Reviewers (Approve / Reject)" LogTraceEvents="false" Schedule="">
   </Item>
+  <Item Name="IOA.Notify.Reviewer" Category="InteropOps" ClassName="InteropOps.Workflow.Notify" PoolSize="1" Enabled="true" Foreground="false" Comment="custom outbound adapter InteropOps.Adapter.ReviewerNotify: webhook POST per new review task (URL setting or env IOA_NOTIFY_URL)" LogTraceEvents="false" Schedule="">
+  </Item>
   <Item Name="IOA.Lookup.Apply" Category="InteropOps" ClassName="InteropOps.Lookup.Apply" PoolSize="1" Enabled="true" Foreground="false" Comment="apply approved patch to IOA.LabCodeMap / unit factor, reprocess the case" LogTraceEvents="false" Schedule="">
   </Item>
   <Item Name="IOA.Reprocess" Category="InteropOps" ClassName="InteropOps.Lookup.Reprocess" PoolSize="1" Enabled="true" Foreground="false" Comment="leaf: resent messages after an approved patch (DTL + validity, no agent, no Decision)" LogTraceEvents="false" Schedule="">

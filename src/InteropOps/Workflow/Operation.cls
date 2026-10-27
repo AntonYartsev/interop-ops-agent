@@ -15,6 +15,8 @@ Method TaskHandler(pTask As EnsLib.Workflow.TaskRequest, Output pResponse As Ens
     Quit:$$$ISERR(tSC) tSC
     Set tId = ..TaskIdForToken(tToken)
     Do ..SetDecisionTask(pTask.%Command, tId, pTask.%FormValues.GetAt("SessionId"))
+    // reviewer channel (webhook), fire and forget: a failed notify must not block the review
+    Do ..SendRequestAsync("IOA.Notify.Reviewer", ##class(Ens.StringRequest).%New(pTask.%Subject _ " | task " _ tId _ " | Inbox: /csp/irisapp/EnsPortal.WFWorklist.zen"), 0)
     If ##class(InteropOps.Config.LLMConfig).AutoApprove() {
         // mark the task itself as auto-approved (Decision Source human:auto is read from here, not from config)
         Set tTask = ##class(EnsLib.Workflow.TaskResponse).%OpenId(tId)

@@ -88,21 +88,6 @@ ClassMethod BatchSummary(pCaseId As %String) As %DynamicObject
     Return ##class(InteropOps.Rules.BatchStats).Summarize(tRaws, ..BaselineDTL())
 }
 
-/// Dev aid (stats check without the production): load cases/CNN-*.hl7 into ^IOA.Batch. Returns the number of files.
-ClassMethod LoadCaseFiles() As %Integer
-{
-    Set tRS = ##class(%File).FileSetFunc(##class(InteropOps.Util.Paths).CasesDir(), "C??-*.hl7"), tN = 0
-    While tRS.%Next() {
-        Set tStream = ##class(%Stream.FileCharacter).%New()
-        $$$ThrowOnError(tStream.LinkToFile(tRS.Name))
-        Set tAll = $TRANSLATE(tStream.Read(tStream.Size), $CHAR(10), ""), tCase = ##class(InteropOps.Util.Ids).CaseIdFromFile(tRS.Name)
-        Kill ^IOA.Batch(tCase)
-        For i = 2:1:$LENGTH(tAll, "MSH|") Set ^IOA.Batch(tCase, i - 1) = "MSH|" _ $PIECE(tAll, "MSH|", i)
-        Set tN = tN + 1
-    }
-    Return tN
-}
-
 /// MSH-10 of a raw message (MSH-1 is the field separator, so MSH-10 is piece 10)
 ClassMethod MSH10(pRaw As %String) As %String
 {

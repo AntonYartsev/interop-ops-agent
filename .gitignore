@@ -8,3 +8,8 @@ cases/in/*
 cases/archive/*
 !cases/archive/.gitkeep
 __pycache__/
+bin/
+obj/
+*.tar
+*.tar.gz
+.DS_Store

@@ -21,6 +21,7 @@ services:
       - IOA_CASES_IN=${IOA_CASES_IN:-/irisdev/app/cases/in/}
       - IOA_REPLAY_DIR=${IOA_REPLAY_DIR:-/irisdev/app/replay}
       - IOA_REVIEWER_USER=${IOA_REVIEWER_USER:-reviewer}
+      - IOA_NOTIFY_URL=${IOA_NOTIFY_URL:-}
       - IOA_REVIEWER_PASSWORD=${IOA_REVIEWER_PASSWORD:-}
     ports:
       - "${IRIS_PORT_SUPER:-51272}:1972"

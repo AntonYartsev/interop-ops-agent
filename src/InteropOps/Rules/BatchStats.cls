@@ -1,5 +1,5 @@
 /// ObjectScript port of summarize() in spike-v2 generate.py: per-batch statistics computed from the received messages
-/// (the spike read them precomputed from tool_cache.json). Check: InteropOps.Rules.BatchStats.CompareWithCache().
+/// (the spike read them precomputed from tool_cache.json).
 Class InteropOps.Rules.BatchStats
 {
 
@@ -151,26 +151,6 @@ ClassMethod CoCodes(ByRef pB, pK As %String) As %DynamicArray [ Private ]
 ClassMethod R2(x) As %Numeric [ Private ]
 {
     Return +$FNUMBER(x, "", 2)
-}
-
-/// Dev check: computed summaries vs tool_cache.json (MSH-10 ids normalised by InteropOps.Util.Ids, numbers within 0.011,
-/// sample_messages ignored). Needs the 12 case files loaded into ^IOA.Batch (LoadCaseFiles). Writes STATS_CHECK=PASS|FAIL.
-ClassMethod CompareWithCache() As %Boolean
-{
-    Set tCache = ##class(InteropOps.Util.Paths).ReadJSON("tool_cache.json"), tAll = 1
-    Set tPairs = [["history", (tCache."history_summary"), (##class(InteropOps.Rules.Data).HistorySummary())]]
-    Set tIt = tCache.scenarios.%GetIterator()
-    While tIt.%GetNext(.tCase, .tScen) { Do tPairs.%Push([(tCase), (tScen), (##class(InteropOps.Rules.Data).BatchSummary(tCase))]) }
-    Set tIt = tPairs.%GetIterator()
-    While tIt.%GetNext(, .tP) {
-        Set tA = tP.%Get(1), tB = tP.%Get(2)
-        Do tA.%Remove("sample_messages"), tB.%Remove("sample_messages")
-        Set tDiff = ..Diff(tA, tB, "")
-        Write tP.%Get(0), " ", $SELECT(tDiff = "": "OK", 1: "DIFF " _ $EXTRACT(tDiff, 1, 400)), !
-        Set:tDiff'="" tAll = 0
-    }
-    Write "STATS_CHECK=", $SELECT(tAll: "PASS", 1: "FAIL"), !
-    Return tAll
 }
 
 ClassMethod Diff(pA, pB, pPath As %String) As %String

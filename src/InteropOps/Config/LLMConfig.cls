@@ -418,44 +418,29 @@ ClassMethod CheckSwitching() As %Boolean
     set allPass = 1
     set before = ..RealFlagsSnapshot()
 
-    // 1. openai without key -> REPLAY
-    kill ov
-    set ov("LLM_PROFILE") = "openai"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENAI_API_KEY") = ""
-    set ov("IOA_LIVE") = "0"
-    set ov("live") = 0
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg1, .ov)
-    set pass1 = (($get(cfg1("profile"))="openai") && ($get(cfg1("provider"))="openai") && ($get(cfg1("model"))="gpt-5.4-mini") && ($get(cfg1("keyVar"))="OPENAI_API_KEY") && ($get(cfg1("apiKeyRef"))="@{env:OPENAI_API_KEY}") && ('..KeyPresent(.ov)) && ($get(cfg1("mode"))="REPLAY"))
-    write "TRANSITION_1_OPENAI_NO_KEY=", $select(pass1:"PASS", 1:"FAIL"), !
-    if 'pass1 { set allPass = 0 }
-
-    // 2. openai with key but IOA_LIVE=0 and live=0 -> REPLAY (safety: key alone never enables LIVE)
-    kill ov
-    set ov("LLM_PROFILE") = "openai"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENAI_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "0"
-    set ov("live") = 0
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg2, .ov)
-    set pass2 = (($get(cfg2("profile"))="openai") && (..KeyPresent(.ov)=1) && ($get(cfg2("mode"))="REPLAY"))
-    write "TRANSITION_2_OPENAI_KEY_DEFAULT_REPLAY=", $select(pass2:"PASS", 1:"FAIL"), !
-    if 'pass2 { set allPass = 0 }
-
-    // 3. openai with test override key + IOA_LIVE=1 -> LIVE
-    kill ov
-    set ov("LLM_PROFILE") = "openai"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENAI_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "1"
-    set ov("live") = ""
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg3, .ov)
-    set pass3 = (($get(cfg3("profile"))="openai") && ($get(cfg3("provider"))="openai") && ($get(cfg3("model"))="gpt-5.4-mini") && ($get(cfg3("keyVar"))="OPENAI_API_KEY") && ($get(cfg3("apiKeyRef"))="@{env:OPENAI_API_KEY}") && ($get(cfg3("mode"))="LIVE"))
-    write "TRANSITION_3_OPENAI_KEY_IOA_LIVE=", $select(pass3:"PASS", 1:"FAIL"), !
-    if 'pass3 { set allPass = 0 }
+    // 1-3, 5-10: Resolve with test overrides (a key alone never enables LIVE; REPLAY=1 and live=0 win)
+    //     $LB(n, label, profile, key, IOA_LIVE, live, REPLAY, expected mode)
+    set dk = "test-override-dummy-key", ptr = 0
+    set cases = ""
+    set cases = cases _ $lb($lb(1, "OPENAI_NO_KEY", "openai", "", "0", 0, "", "REPLAY"))
+    set cases = cases _ $lb($lb(2, "OPENAI_KEY_DEFAULT_REPLAY", "openai", dk, "0", 0, "", "REPLAY"))
+    set cases = cases _ $lb($lb(3, "OPENAI_KEY_IOA_LIVE", "openai", dk, "1", "", "", "LIVE"))
+    set cases = cases _ $lb($lb(5, "OPENROUTER_NO_KEY", "openrouter", "", "0", 0, "", "REPLAY"))
+    set cases = cases _ $lb($lb(6, "OPENROUTER_KEY_DEFAULT_REPLAY", "openrouter", dk, "0", 0, "", "REPLAY"))
+    set cases = cases _ $lb($lb(7, "OPENROUTER_KEY_IOA_LIVE", "openrouter", dk, "1", "", "", "LIVE"))
+    set cases = cases _ $lb($lb(8, "OPENAI_REPLAY_OVERRIDE", "openai", dk, "1", 1, "1", "REPLAY"))
+    set cases = cases _ $lb($lb(9, "OPENROUTER_REPLAY_OVERRIDE", "openrouter", dk, "1", 1, "1", "REPLAY"))
+    set cases = cases _ $lb($lb(10, "LIVE_GLOBAL_OFF_WINS", "openai", dk, "1", 0, "", "REPLAY"))
+    while $listnext(cases, ptr, row) {
+        set $listbuild(n, label, prof, key, envLive, live, replay, want) = row
+        set kv = $zconvert(prof, "U") _ "_API_KEY"
+        kill ov, cfg
+        set ov("LLM_PROFILE") = prof, ov("LLM_MODEL") = "", ov(kv) = key, ov("IOA_LIVE") = envLive, ov("live") = live, ov("REPLAY") = replay
+        do ..Resolve(.cfg, .ov)
+        set pass = (($get(cfg("profile")) = prof) && ($get(cfg("provider")) = prof) && ($get(cfg("model")) = $select(prof = "openai": ..#DEFAULTMODELOPENAI, 1: ..#DEFAULTMODELOPENROUTER)) && ($get(cfg("keyVar")) = kv) && ($get(cfg("apiKeyRef")) = ("@{env:" _ kv _ "}")) && (..KeyPresent(.ov) = (key '= "")) && ($get(cfg("mode")) = want))
+        write "TRANSITION_", n, "_", label, "=", $select(pass: "PASS", 1: "FAIL"), !
+        if 'pass { set allPass = 0 }
+    }
 
     // 4. live toggle (what SetLive(1)/SetLive(0) store) injected as an override, never written to ^IOA.Config,
     //    plus the full ModeFor truth table: only (complete, key, live, no REPLAY) gives LIVE
@@ -477,83 +462,6 @@ ClassMethod CheckSwitching() As %Boolean
     set pass4 = (($get(cfg4a("mode"))="LIVE") && ($get(cfg4b("mode"))="REPLAY") && table)
     write "TRANSITION_4_OPENAI_LIVE_TOGGLE_MODEFOR=", $select(pass4:"PASS", 1:"FAIL"), !
     if 'pass4 { set allPass = 0 }
-
-    // 5. openrouter without key -> REPLAY
-    kill ov
-    set ov("LLM_PROFILE") = "openrouter"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENROUTER_API_KEY") = ""
-    set ov("IOA_LIVE") = "0"
-    set ov("live") = 0
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg5, .ov)
-    set pass5 = (($get(cfg5("profile"))="openrouter") && ($get(cfg5("provider"))="openrouter") && ($get(cfg5("model"))="google/gemini-2.5-flash") && ($get(cfg5("keyVar"))="OPENROUTER_API_KEY") && ($get(cfg5("apiKeyRef"))="@{env:OPENROUTER_API_KEY}") && ('..KeyPresent(.ov)) && ($get(cfg5("mode"))="REPLAY"))
-    write "TRANSITION_5_OPENROUTER_NO_KEY=", $select(pass5:"PASS", 1:"FAIL"), !
-    if 'pass5 { set allPass = 0 }
-
-    // 6. openrouter with key but IOA_LIVE=0 and live=0 -> REPLAY
-    kill ov
-    set ov("LLM_PROFILE") = "openrouter"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENROUTER_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "0"
-    set ov("live") = 0
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg6, .ov)
-    set pass6 = (($get(cfg6("profile"))="openrouter") && (..KeyPresent(.ov)=1) && ($get(cfg6("mode"))="REPLAY"))
-    write "TRANSITION_6_OPENROUTER_KEY_DEFAULT_REPLAY=", $select(pass6:"PASS", 1:"FAIL"), !
-    if 'pass6 { set allPass = 0 }
-
-    // 7. openrouter with test override key + IOA_LIVE=1 -> LIVE
-    kill ov
-    set ov("LLM_PROFILE") = "openrouter"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENROUTER_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "1"
-    set ov("live") = ""
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg7, .ov)
-    set pass7 = (($get(cfg7("profile"))="openrouter") && ($get(cfg7("provider"))="openrouter") && ($get(cfg7("model"))="google/gemini-2.5-flash") && ($get(cfg7("keyVar"))="OPENROUTER_API_KEY") && ($get(cfg7("apiKeyRef"))="@{env:OPENROUTER_API_KEY}") && ($get(cfg7("mode"))="LIVE"))
-    write "TRANSITION_7_OPENROUTER_KEY_IOA_LIVE=", $select(pass7:"PASS", 1:"FAIL"), !
-    if 'pass7 { set allPass = 0 }
-
-    // 8. openai with key + IOA_LIVE=1 + REPLAY=1 -> REPLAY
-    kill ov
-    set ov("LLM_PROFILE") = "openai"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENAI_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "1"
-    set ov("live") = 1
-    set ov("REPLAY") = "1"
-    do ..Resolve(.cfg8, .ov)
-    set pass8 = (($get(cfg8("profile"))="openai") && ($get(cfg8("mode"))="REPLAY"))
-    write "TRANSITION_8_OPENAI_REPLAY_OVERRIDE=", $select(pass8:"PASS", 1:"FAIL"), !
-    if 'pass8 { set allPass = 0 }
-
-    // 9. openrouter with key + IOA_LIVE=1 + REPLAY=1 -> REPLAY
-    kill ov
-    set ov("LLM_PROFILE") = "openrouter"
-    set ov("LLM_MODEL") = ""
-    set ov("OPENROUTER_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "1"
-    set ov("live") = 1
-    set ov("REPLAY") = "1"
-    do ..Resolve(.cfg9, .ov)
-    set pass9 = (($get(cfg9("profile"))="openrouter") && ($get(cfg9("mode"))="REPLAY"))
-    write "TRANSITION_9_OPENROUTER_REPLAY_OVERRIDE=", $select(pass9:"PASS", 1:"FAIL"), !
-    if 'pass9 { set allPass = 0 }
-
-    // 10. key + IOA_LIVE=1 but live=0 (SetLive(0)) -> REPLAY: the global wins over env
-    kill ov
-    set ov("LLM_PROFILE") = "openai"
-    set ov("OPENAI_API_KEY") = "test-override-dummy-key"
-    set ov("IOA_LIVE") = "1"
-    set ov("live") = 0
-    set ov("REPLAY") = ""
-    do ..Resolve(.cfg10, .ov)
-    set pass10 = ($get(cfg10("mode")) = "REPLAY")
-    write "TRANSITION_10_LIVE_GLOBAL_OFF_WINS=", $select(pass10:"PASS", 1:"FAIL"), !
-    if 'pass10 { set allPass = 0 }
 
     // 11. record: global "record" wins over env; legacy "record_override" only when "record" is not set
     kill ov

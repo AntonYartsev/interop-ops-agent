@@ -2,7 +2,7 @@
 """Validate REPLAY cassettes (schema ioa-replay/1) and scan them for secrets.
 
 Usage: python3 scripts/validate_replay.py [--require] [--keys-only] [DIR_OR_FILE ...]   (default: replay/)
-  --keys-only  skip the schema and scan any file only for sk- keys and key env values (used by precommit.sh for
+  --keys-only  skip the schema and scan any file only for sk- keys and key env values (used by --staged for
                non-cassette files, where the words Bearer/Authorization may legitimately appear in code or docs)
   --staged     check the git index in memory (no temp files): staged replay/*.json get schema + full scan,
                every other staged file gets the --keys-only scan; a staged .env is a failure (its content is not read)

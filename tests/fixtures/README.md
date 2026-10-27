@@ -1,13 +1,14 @@
 # Test fixtures
 
-`Agent.json` and `A.json` are read-only copies of `results/Agent.json` and `results/A.json` from the
+`Agent.json` and `A.json` are trimmed copies of `results/Agent.json` and `results/A.json` from the
 spike repository `spike-v2-message-path` (the preregistered experiment the 12 cases come from). They are the
-spike's recorded run results on the synthetic cases; no real patients. `scripts/test_score.py` reads them by
+spike's recorded run results on the synthetic cases; no real patients. Only the fields that `to_row()` in
+`scripts/test_score.py` reads are kept, one case per line. `scripts/test_score.py` reads them by
 default, so the test runs without the spike repository.
 
 | File | sha256 |
 |---|---|
-| `Agent.json` | `82189572ee227fefa48bc9248cbae434170e6664399b0599876a2f5d88c6733d` |
-| `A.json` | `94789175f3f82c0495500dfb1c6c7e7374a0d65daafd7bb2c42d8db637e90a68` |
+| `Agent.json` | `027871bb00af8bb780b55ea5f33300c1cdec222a48734b255c92d3b8e968b821` |
+| `A.json` | `3766e8baa6787ddc33e066facdc2b2616d6c07a289917f5fc797b564054f2460` |
 
-Do not edit them; refresh by copying from the spike and updating the hashes.
+Do not edit them; refresh by copying from the spike, trimming to the same fields and updating the hashes.
