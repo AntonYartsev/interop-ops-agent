@@ -1,4 +1,4 @@
-/// Vector Search knowledge base (bonus, not wired into the agent): one runbook / past-incident entry.
+/// Vector Search knowledge base (bonus; agent evidence via Evidence.Builder.Similar): one runbook / past-incident entry.
 /// Two vector columns because the embedders have different dimensions: EmbLocal (local hashed embedder,
 /// InteropOps.KB.Embedder.Local, 384) and EmbOpenAI (text-embedding-3-small, 1536, empty unless Reembed("openai") ran).
 /// Search: InteropOps.KB.Store.Search (SQL VECTOR_COSINE). Data: data/kb_runbook.json (precomputed EmbLocal vectors).

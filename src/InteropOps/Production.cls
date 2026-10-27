@@ -27,6 +27,18 @@ XData ProductionDefinition
   </Item>
   <Item Name="IOA.Reprocess" Category="InteropOps" ClassName="InteropOps.Lookup.Reprocess" PoolSize="1" Enabled="true" Foreground="false" Comment="leaf: resent messages after an approved patch (DTL + validity, no agent, no Decision)" LogTraceEvents="false" Schedule="">
   </Item>
+  <Item Name="PexHl7CheckBP" Category="InteropOps,Evidence" ClassName="PexHl7.CheckProcess" PoolSize="1" Enabled="true" Foreground="false" Comment="evidence: IRIS EnsLib.HL7 validation + .NET NHapi second opinion (one PEX call per batch); soft-degrades to IRIS-only" LogTraceEvents="false" Schedule="">
+    <Setting Target="Host" Name="TargetConfigName">PexHl7Check</Setting>
+    <Setting Target="Host" Name="IrisValSpec">dm-zrny-x</Setting>
+    <Setting Target="Host" Name="DotNetTimeout">30</Setting>
+  </Item>
+  <Item Name="PexHl7Check" Category="InteropOps,Evidence" ClassName="EnsLib.PEX.BusinessOperation" PoolSize="1" Enabled="true" Foreground="false" Comment="PEX .NET: Hl7Check.OruCheckOperation (NHapi v2.5.1)" LogTraceEvents="false" Schedule="">
+    <Setting Target="Host" Name="%remoteClassname">Hl7Check.OruCheckOperation</Setting>
+    <Setting Target="Host" Name="%gatewayName">%DotNet Server</Setting>
+    <Setting Target="Host" Name="%gatewayExtraClasspaths">/usr/irissys/dev/dotnet/bin/net8.0/InterSystems.Data.Utils.dll|/home/irisowner/pex/hl7check/System.Configuration.ConfigurationManager.dll|/home/irisowner/pex/hl7check/System.Diagnostics.EventLog.dll|/home/irisowner/pex/hl7check/System.Security.Cryptography.ProtectedData.dll|/home/irisowner/pex/hl7check/NHapi.Base.dll|/home/irisowner/pex/hl7check/NHapi.Model.V251.dll|/home/irisowner/pex/hl7check/Hl7Check.dll</Setting>
+  </Item>
+  <Item Name="IOA.Evidence.Ucum" Category="InteropOps,Evidence" ClassName="InteropOps.Evidence.UcumCheck" PoolSize="1" Enabled="true" Foreground="false" Comment="evidence: OBX-6 vs lookup expected unit via InteropOps.Py.Ucum (ParseOBX + Compare)" LogTraceEvents="false" Schedule="">
+  </Item>
 </Production>
 }
 

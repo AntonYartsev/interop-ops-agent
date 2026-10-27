@@ -8,7 +8,7 @@
 #   5. scripts/smoke_generic.sh   (a non-Cnn file name/MSH-10 gets a CaseId and a final rules decision; runs
 #                                  after check, removes its own Decision row, so the 12-case score is unaffected)
 # Each step and the total are timed. Last line:
-#   CLEAN_RUN: OK  score 11/12  mode REPLAY  llm_calls 0  smoke OK  total 4m12s
+#   CLEAN_RUN: OK  score 12/12  mode REPLAY  llm_calls 0  smoke OK  total 4m12s
 #   CLEAN_RUN: FAIL  step <name>  ...
 # Step 1 destroys the IRIS container state, so it only runs with --yes. Without --yes the script runs the
 # read-only safety checks, prints what it would do and exits 2. Bash 3.2 compatible.

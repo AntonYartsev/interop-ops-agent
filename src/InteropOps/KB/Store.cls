@@ -1,4 +1,4 @@
-/// Vector Search KB (bonus, not wired into the agent): load the fixture and search with SQL VECTOR_COSINE.
+/// Vector Search KB (bonus; agent evidence via Evidence.Builder.Similar): load the fixture and search with SQL VECTOR_COSINE.
 ///   do ##class(InteropOps.KB.Store).Load()                    // data/kb_runbook.json, precomputed local vectors
 ///   write ##class(InteropOps.KB.Store).Search("glucose in mg/dL, receiver wants mmol/L", 3)
 /// Self-test: do ##class(InteropOps.KB.KBTest).Run()

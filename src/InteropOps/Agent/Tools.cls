@@ -6,7 +6,7 @@ Class InteropOps.Agent.Tools Extends %AI.Tool
 
 Property Name As %String [ InitialExpression = "Lab feed inspection tools" ];
 
-Property Description As %String(MAXLEN = "") [ InitialExpression = "Read-only tools for one batch of HL7 v2.5.1 ORU^R01 messages from REGIONAL_LAB: page through the batch, search the code lookup table, read the UCUM conversion table, check unit spelling equivalence, check critical values, read this session's event log." ];
+Property Description As %String(MAXLEN = "") [ InitialExpression = "Read-only tools for one batch of HL7 v2.5.1 ORU^R01 messages from REGIONAL_LAB: page through the batch, search the code lookup table, read the UCUM conversion table, check unit spelling equivalence, check critical values, read this session's event log, read the deterministic validation evidence (.NET NHapi + UCUM)." ];
 
 /// Return raw HL7 messages of the current batch, at most 10 per call. Segments are separated by newlines.
 ClassMethod GetBatchMessages(offset As %Integer(DESCRIPTION = "0-based index of the first message"), limit As %Integer(DESCRIPTION = "number of messages, 1 to 10")) As %DynamicObject
@@ -77,6 +77,16 @@ ClassMethod GetEventLogExcerpt() As %DynamicObject
         Do tOut.%Push({"time": (tRS.TimeLogged), "type": (tRS.Type), "config": (tRS.ConfigName), "text": ($EXTRACT(tRS.Text, 1, 300))})
     }
     Return {"session_id": (tSession), "entries": (tOut)}
+}
+
+/// Return the deterministic validation evidence of the current batch, computed before you were called:
+/// hl7check = HL7 v2.5.1 structure check by a .NET NHapi second opinion diffed with IRIS EnsLib.HL7 validation
+/// (aggregated findings: severity, code, path, source both|dotnet|iris, count of messages, example MSH-10s);
+/// ucum = per OBX the unit (OBX-6) compared with the lookup's expected unit by UCUM (same_unit, spelling_variant,
+/// convertible with factor, unit_missing, code_not_in_lookup) with counts and OBX-8 flags. status unavailable = that check could not run.
+ClassMethod GetValidationEvidence() As %DynamicObject
+{
+    Return ##class(InteropOps.Evidence.Builder).ForCase($GET(%IOACaseId))
 }
 
 /// Check every OBX result of the current batch against the critical low/high table of the receiver.

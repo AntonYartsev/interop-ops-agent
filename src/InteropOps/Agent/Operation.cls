@@ -226,6 +226,7 @@ ClassMethod SystemPrompt() As %String
 ClassMethod UserPrompt(pRequest As InteropOps.Msg.AgentRequest) As %String
 {
     Return "Batch " _ pRequest.CaseId _ " (" _ pRequest.MessageCount _ " messages, first MSH-10 " _ pRequest.FirstMSH10 _ "). Triage ticket: " _ pRequest.TicketJSON
+        _ $SELECT(##class(InteropOps.Evidence.Builder).InPrompt(): ##class(InteropOps.Evidence.Builder).PromptBlock(pRequest.EvidenceJSON), 1: "")
         _ " Inspect what you need with the tools, then return only the JSON object."
 }
 

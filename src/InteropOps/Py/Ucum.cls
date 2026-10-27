@@ -1,5 +1,5 @@
 /// Embedded Python helpers (standard library only): UCUM-style unit normalization/comparison and OBX parsing for evidence.
-/// Not wired into the agent or Tools.CheckUnitEquivalence. All methods take %String and return a JSON string
+/// Used by the evidence step IOA.Evidence.Ucum, not by Tools.CheckUnitEquivalence. All methods take %String and return a JSON string
 /// (load with {}.%FromJSON(json)). Self-test: do ##class(InteropOps.Py.UcumTest).Run()
 Class InteropOps.Py.Ucum
 {

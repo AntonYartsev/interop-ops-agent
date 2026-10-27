@@ -3,13 +3,13 @@
   "case_id":"C05",
   "match":{
     "msh10":"C05-MSG001",
-    "prompt_sha256":"e2f9e6b2252471e4c62ca3c0899972019f3031695f7815b8e8eaea7513a04712"
+    "prompt_sha256":"c6635083e3de14b35c67c18b4ebdbb5f569ca550f9a85835260ea55ddb9bbfa2"
   },
   "recorded":{
     "profile":"openai",
     "model":"gpt-5.4-mini",
     "build":"2026.3.0AI.154",
-    "at":"2026-10-26T22:22:19Z",
+    "at":"2026-10-27T10:46:04Z",
     "source":"live"
   },
   "turns":[
@@ -28,10 +28,20 @@
           }
         },
         {
-          "name":"CheckUnitEquivalence",
+          "name":"GetUCUMTable",
           "arguments":{
-            "fromUnit":"mg/dl",
-            "toUnit":"mg/dL"
+          }
+        },
+        {
+          "name":"GetValidationEvidence",
+          "arguments":{
+          }
+        },
+        {
+          "name":"GetBatchMessages",
+          "arguments":{
+            "limit":10,
+            "offset":0
           }
         }
       ],
@@ -45,23 +55,31 @@
           "content":"{\"matches\":[{\"canonical_name\":\"Urea nitrogen [Mass/volume] in Serum or Plasma\",\"expected_unit\":\"mg/dL\",\"history_median\":14,\"history_units\":{\"mg/dL\":100},\"local_code\":\"BUN\",\"loinc\":\"3094-0\",\"panel\":\"BMP\",\"ref_range\":\"7-20\",\"short_name\":\"Urea nitrogen\"}],\"query\":\"BUN\"}"
         },
         {
-          "name":"CheckUnitEquivalence",
-          "content":"{\"basis\":\"same UCUM unit, different letter case (mg/dL)\",\"equivalent\":1,\"factor\":1,\"from_unit\":\"mg/dl\",\"to_unit\":\"mg/dL\"}"
+          "name":"GetUCUMTable",
+          "content":"{\"ucum_conversions\":[{\"canonical_code\":\"2345-7\",\"factor\":18.0,\"from_unit\":\"mmol/L\",\"note\":\"Molar to mass conversion for Glucose (MW 180.16 g/mol)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2345-7\",\"factor\":0.0555,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Glucose\",\"to_unit\":\"mmol/L\"},{\"canonical_code\":\"2160-0\",\"factor\":0.01131,\"from_unit\":\"umol/L\",\"note\":\"Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2160-0\",\"factor\":88.4,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Creatinine\",\"to_unit\":\"umol/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"g/L\",\"note\":\"Metric prefix conversion (grams per liter to grams per deciliter)\",\"to_unit\":\"g/dL\"},{\"canonical_code\":\"*\",\"factor\":10.0,\"from_unit\":\"g/dL\",\"note\":\"Metric prefix conversion (grams per deciliter to grams per liter)\",\"to_unit\":\"g/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"mg/L\",\"note\":\"Metric prefix conversion (milligrams per liter to milligrams per deciliter)\",\"to_unit\":\"mg/dL\"}]}"
+        },
+        {
+          "name":"GetValidationEvidence",
+          "content":"{\"case_id\":\"C05\",\"hl7check\":{\"agree\":0,\"dotnet_only\":0,\"engine\":\"NHapi 3.2.3.0 / v2.5.1 model; IRIS valspec dm-zrny-x\",\"errors\":0,\"findings\":[],\"iris_invalid\":0,\"iris_only\":0,\"messages\":30,\"messages_with_errors\":0,\"status\":\"ok\",\"warnings\":0},\"kb\":{\"embedder\":\"local-hash-384-v1\",\"results\":[{\"score\":0.4415,\"slug\":\"kb-urea-units\",\"title\":\"Urea nitrogen mg/dL to mmol/L conversion\"},{\"score\":0.3597,\"slug\":\"kb-unit-case\",\"title\":\"Unit differs only by letter case\"},{\"score\":0.3516,\"slug\":\"kb-creatinine-units\",\"title\":\"Creatinine mg/dL to umol/L conversion\"}],\"status\":\"ok\"},\"ucum\":{\"findings\":[{\"basis\":\"prefix\",\"code\":\"GLU\",\"count\":30,\"examples\":[\"C05-MSG001\",\"C05-MSG002\",\"C05-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[1]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"NA\",\"count\":30,\"examples\":[\"C05-MSG001\",\"C05-MSG002\",\"C05-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[2]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"K\",\"count\":30,\"examples\":[\"C05-MSG001\",\"C05-MSG002\",\"C05-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[3]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"CREAT\",\"count\":30,\"examples\":[\"C05-MSG001\",\"C05-MSG002\",\"C05-MSG003\"],\"expected_unit\":\"umol/L\",\"factor\":1,\"obx\":\"OBX[4]\",\"severity\":\"info\",\"unit\":\"umol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"BUN\",\"count\":30,\"examples\":[\"C05-MSG001\",\"C05-MSG002\",\"C05-MSG003\"],\"expected_unit\":\"mg/dL\",\"factor\":1,\"note\":\"same unit\",\"obx\":\"OBX[5]\",\"severity\":\"info\",\"unit\":\"mg/dl\",\"verdict\":\"spelling_variant\"}],\"status\":\"ok\",\"summary\":\"UCUM: 150 OBX in 30 messages; 150 unit OK vs lookup, 0 need attention\"}}"
+        },
+        {
+          "name":"GetBatchMessages",
+          "content":"{\"case_id\":\"C05\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C05-MSG001|P|2.5.1\\nPID|1||MRN-101400^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1400||19500610|M\\nORC|RE|ORD-61400|LAB-91400||||||20261025080000\\nOBR|1|ORD-61400|LAB-91400|BMP^Basic Metabolic Panel^L|||20261025080000\\nOBX|1|NM|GLU^Glucose^L||4.8|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||142.9|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||3.87|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||72|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||7|mg/dl|7-20|N|||F\\n\"},{\"index\":1,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080200||ORU^R01^ORU_R01|C05-MSG002|P|2.5.1\\nPID|1||MRN-101401^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1401||19510711|F\\nORC|RE|ORD-61401|LAB-91401||||||20261025080200\\nOBR|1|ORD-61401|LAB-91401|BMP^Basic Metabolic Panel^L|||20261025080200\\nOBX|1|NM|GLU^Glucose^L||5.1|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||142.7|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||3.64|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||74|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||14|mg/dl|7-20|N|||F\\n\"},{\"index\":2,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080400||ORU^R01^ORU_R01|C05-MSG003|P|2.5.1\\nPID|1||MRN-101402^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1402||19520812|M\\nORC|RE|ORD-61402|LAB-91402||||||20261025080400\\nOBR|1|ORD-61402|LAB-91402|BMP^Basic Metabolic Panel^L|||20261025080400\\nOBX|1|NM|GLU^Glucose^L||5|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||136.8|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.16|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||73|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||18|mg/dl|7-20|N|||F\\n\"},{\"index\":3,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080600||ORU^R01^ORU_R01|C05-MSG004|P|2.5.1\\nPID|1||MRN-101403^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1403||19530913|F\\nORC|RE|ORD-61403|LAB-91403||||||20261025080600\\nOBR|1|ORD-61403|LAB-91403|BMP^Basic Metabolic Panel^L|||20261025080600\\nOBX|1|NM|GLU^Glucose^L||4.8|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||140.4|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||3.87|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||87|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||13|mg/dl|7-20|N|||F\\n\"},{\"index\":4,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080800||ORU^R01^ORU_R01|C05-MSG005|P|2.5.1\\nPID|1||MRN-101404^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1404||19540114|M\\nORC|RE|ORD-61404|LAB-91404||||||20261025080800\\nOBR|1|ORD-61404|LAB-91404|BMP^Basic Metabolic Panel^L|||20261025080800\\nOBX|1|NM|GLU^Glucose^L||4.6|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||141.3|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.24|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||104|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||13|mg/dl|7-20|N|||F\\n\"},{\"index\":5,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081000||ORU^R01^ORU_R01|C05-MSG006|P|2.5.1\\nPID|1||MRN-101405^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1405||19550215|F\\nORC|RE|ORD-61405|LAB-91405||||||20261025081000\\nOBR|1|ORD-61405|LAB-91405|BMP^Basic Metabolic Panel^L|||20261025081000\\nOBX|1|NM|GLU^Glucose^L||4.7|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||139.4|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.32|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||90|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||18|mg/dl|7-20|N|||F\\n\"},{\"index\":6,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081200||ORU^R01^ORU_R01|C05-MSG007|P|2.5.1\\nPID|1||MRN-101406^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1406||19560316|M\\nORC|RE|ORD-61406|LAB-91406||||||20261025081200\\nOBR|1|ORD-61406|LAB-91406|BMP^Basic Metabolic Panel^L|||20261025081200\\nOBX|1|NM|GLU^Glucose^L||4.3|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||139.9|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||3.79|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||61|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||14|mg/dl|7-20|N|||F\\n\"},{\"index\":7,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081400||ORU^R01^ORU_R01|C05-MSG008|P|2.5.1\\nPID|1||MRN-101407^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1407||19570417|F\\nORC|RE|ORD-61407|LAB-91407||||||20261025081400\\nOBR|1|ORD-61407|LAB-91407|BMP^Basic Metabolic Panel^L|||20261025081400\\nOBX|1|NM|GLU^Glucose^L||4.9|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||139.7|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.23|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||90|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||13|mg/dl|7-20|N|||F\\n\"},{\"index\":8,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081600||ORU^R01^ORU_R01|C05-MSG009|P|2.5.1\\nPID|1||MRN-101408^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1408||19580518|M\\nORC|RE|ORD-61408|LAB-91408||||||20261025081600\\nOBR|1|ORD-61408|LAB-91408|BMP^Basic Metabolic Panel^L|||20261025081600\\nOBX|1|NM|GLU^Glucose^L||4.1|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||142.7|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.25|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||90|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||18|mg/dl|7-20|N|||F\\n\"},{\"index\":9,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081800||ORU^R01^ORU_R01|C05-MSG010|P|2.5.1\\nPID|1||MRN-101409^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1409||19590619|F\\nORC|RE|ORD-61409|LAB-91409||||||20261025081800\\nOBR|1|ORD-61409|LAB-91409|BMP^Basic Metabolic Panel^L|||20261025081800\\nOBX|1|NM|GLU^Glucose^L||5.2|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||140.5|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||3.67|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||57|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||14|mg/dl|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
         }
       ]
     },
     {
       "role":"assistant",
-      "content":"{\"action\":\"pass\",\"target\":null,\"reason\":\"BUN maps to LOINC 3094-0 and the only unit difference is spelling/case (mg/dl vs mg/dL), which CheckUnitEquivalence reports as equivalent; no critical results were found.\",\"evidence\":[\"Lookup for BUN returns local code BUN -> LOINC 3094-0 with expected unit mg/dL and reference range 7-20.\",\"CheckUnitEquivalence reports mg/dl and mg/dL are the same UCUM unit with factor 1.\",\"CheckCriticalValues found 0 critical results in the batch.\"],\"field_drift\":null}"
+      "content":"{\"action\":\"pass\",\"target\":null,\"reason\":\"BUN is the correct code/LOINC 3094-0 with the expected analyte behavior, and the only difference is unit spelling mg/dl vs expected mg/dL which CheckUnitEquivalence treats as equivalent; no critical results were found.\",\"evidence\":[\"SearchLookup maps BUN to LOINC 3094-0 with expected unit mg/dL and ref range 7-20\",\"Validation evidence shows 150 OBX across 30 messages and all units OK vs lookup, with BUN flagged as spelling_variant from mg/dl to mg/dL\",\"CheckUnitEquivalence reports the BUN unit difference as equivalent spelling with factor 1\",\"CheckCriticalValues returned 0 critical results across the batch\",\"All 30 messages have HL7 structure check errors 0/30 and no drifted fields were reported\"],\"field_drift\":null}"
     }
   ],
   "expected":{
     "decision":"pass",
-    "rationale_short":"BUN maps to LOINC 3094-0 and the only unit difference is spelling/case (mg/dl vs mg/dL), which CheckUnitEquivalence reports as equivalent; no critical results were found."
+    "rationale_short":"BUN is the correct code/LOINC 3094-0 with the expected analyte behavior, and the only difference is unit spelling mg/dl vs expected mg/dL which CheckUnitEquivalence treats as equivalent; no critical results were found."
   },
   "usage":{
-    "prompt_tokens":3515,
-    "completion_tokens":208
+    "prompt_tokens":8323,
+    "completion_tokens":279
   },
   "llm_calls":2
 }

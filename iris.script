@@ -10,6 +10,7 @@ set app("DeepSeeEnabled")=1
 do ##class(Security.Applications).Modify("/csp/irisapp",.app)
 do ##class(%Library.EnsembleMgr).EnableDeepSee("/csp/irisapp")
 zn "IRISAPP"
+do $SYSTEM.OBJ.ImportDir("/home/irisowner/dev/pex/src/PexHl7", "*.cls", "ck", .errors, 1)
 do $SYSTEM.OBJ.ImportDir("/home/irisowner/dev/src", "*.cls", "ck", .errors, 1)
 do ##class(Ens.Director).SetAutoStart("InteropOps.Production")
 halt

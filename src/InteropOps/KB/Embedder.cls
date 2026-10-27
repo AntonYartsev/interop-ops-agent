@@ -1,4 +1,4 @@
-/// Text embedders for the Vector Search KB (bonus, not wired into the agent).
+/// Text embedders for the Vector Search KB (bonus; agent evidence via Evidence.Builder.Similar).
 ///   local  (default): deterministic hashed bag-of-words + word bigrams + char 3-grams, small synonym map, lowercase,
 ///          L2-normalized, 384 dimensions, Embedded Python standard library only. Free, no network.
 ///   openai (IOA_KB_EMBED=openai): text-embedding-3-small, 1536 dimensions, key from the OPENAI_API_KEY variable of the

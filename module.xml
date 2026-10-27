@@ -12,12 +12,15 @@
         <License>MIT</License>
       </Author>
       <Packaging>module</Packaging>
-      <!-- Tested only on IRIS 2026.3.0AI build 154 (AI Hub EAP: %AI.Agent, %AI.Provider). The AI Hub
-           requirement itself cannot be expressed here. -->
+      <!-- Tested only on IRIS 2026.3.0AI build 154 with IPM 0.10.10 (AI Hub EAP: %AI.Agent, %AI.Provider).
+           The AI Hub requirement itself cannot be expressed here. -->
       <SystemRequirements Version=">=2026.3" Interoperability="enabled"/>
       <SourcesRoot>src</SourcesRoot>
-      <!-- All 45 classes (src/InteropOps/**.cls). pex/ (optional .NET PEX) is not part of the module. -->
+      <!-- src/InteropOps/**.cls. The evidence step and the production use the PEX message classes
+           PexHl7.* (pex/src/PexHl7), so that package is a resource too. The .NET DLLs are not:
+           without the .NET runtime PexHl7Check soft-fails. -->
       <Resource Name="InteropOps.PKG"/>
+      <Resource Name="PexHl7.PKG" Directory="../pex/src"/>
       <!-- No FileCopy: cases/, data/ and replay/ are read in place from the module root, which must be
            the repository mounted at /home/irisowner/dev or /irisdev/app (InteropOps.Util.Paths,
            LLMConfig DEFAULTREPLAYDIR / DEFAULTCASESIN, Production FilePath). No WebApplication: /demo,

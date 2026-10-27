@@ -2,7 +2,8 @@
 /// patch_mapping : reference map_code checks + history replay (no historical OBX uses the source code)
 /// convert_unit  : reference convert_unit checks + strict UCUM factor + history replay (no historical OBX has from_unit)
 /// quarantine    : >=2 copies, byte-identical copies, history replay, and reference no_action check on the batch
-/// pass/escalate : not a patch, nothing is applied; the reference no_action result is recorded for information only
+/// pass          : not a patch; rejected (final escalate) if the reference no_action check finds an unmapped code or an empty required field
+/// escalate      : not a patch; the reference no_action result is recorded for information only
 /// A patch that does not pass the gate is not applied: final_action = escalate.
 Class InteropOps.Gate.Replay Extends Ens.BusinessOperation
 {
@@ -27,10 +28,20 @@ ClassMethod Evaluate(pCaseId As %String, pDecision As %DynamicObject) As %Dynami
     Set tReasons = []
     Set tOut = {"action": (tAction), "is_patch": 0, "checks": {}}
 
-    If (tAction = "pass") || (tAction = "escalate") {
+    If tAction = "escalate" {
         Set tOut."gate_status" = "NOT_A_PATCH"
         Set tOut."final_action" = tAction
         Set tOut."reference_no_action_info" = ##class(InteropOps.Gate.Reference).Evaluate(pCaseId, {"type": "no_action"})
+        Return tOut
+    }
+    If tAction = "pass" {
+        // pass forwards the batch as is: an unmapped code or an empty required field would reach the feed unresolved
+        Set tRef = ##class(InteropOps.Gate.Reference).Evaluate(pCaseId, {"type": "no_action"})
+        Set tOut."reference_no_action_info" = tRef, tIt = tRef."gate_reasons".%GetIterator()
+        While tIt.%GetNext(, .tR) { Do:($EXTRACT(tR, 1, 25) = "unresolved_unmapped_code:")||($EXTRACT(tR, 1, 26) = "unresolved_required_field:") tReasons.%Push("pass_would_forward:" _ tR) }
+        Set tOut."gate_reasons" = tReasons
+        Set tOut."gate_status" = $SELECT(tReasons.%Size() = 0: "NOT_A_PATCH", 1: "GATE_REJECTED")
+        Set tOut."final_action" = $SELECT(tReasons.%Size() = 0: "pass", 1: "escalate")
         Return tOut
     }
     Set tOut."is_patch" = 1

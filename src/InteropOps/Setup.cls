@@ -628,6 +628,8 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
     write "FLAGS_FROM_ENV=", ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv(), !
     do ..LoadLabCodeMap()
     do ..MaybeInstallDailyReset()
+    // KB fixture for the agent evidence "similar past incidents" (local vectors, no paid call)
+    if ##class(InteropOps.KB.Store).Count() = 0 write "KB_LOAD=", $SYSTEM.Status.GetErrorText(##class(InteropOps.KB.Store).Load(, .kbN)), " rows ", +$get(kbN), !
 
     set casesInDir = ##class(InteropOps.Config.LLMConfig).CasesIn()
     if (casesInDir '= "") && ('##class(%File).DirectoryExists(casesInDir)) {
@@ -646,6 +648,13 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
     do ##class(Ens.Director).SetAutoStart(prodName)
 
     set sc = ##class(Ens.Director).GetProductionStatus(.curProd, .curState)
+    // IPM runs the Activate phase inside a transaction: its retained locks (^Ens.Runtime) block the
+    // production jobs, so start in a separate process that gets the lock after IPM commits.
+    if ($tlevel > 0) && (curState '= 1) {
+        job ##class(InteropOps.Setup).StartInBackground(prodName)
+        write "PRODUCTION_STATUS=STARTING (background job, $TLEVEL=", $tlevel, ")", !
+        quit $$$OK
+    }
     if (curState '= 1) || (curProd '= prodName) {
         if (curState = 4) {
             do ##class(Ens.Director).RecoverProduction()
@@ -676,6 +685,19 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
         quit $$$ERROR($$$GeneralError, "Production or DeepSee verification failed")
     }
     quit $$$OK
+}
+
+/// Job body for an IPM install: start the production; without a .NET runtime (an instance not built from
+/// this Dockerfile) disable PexHl7Check, so the evidence step soft-fails at once instead of a 30 s timeout per batch.
+ClassMethod StartInBackground(pProd As %String)
+{
+    set sc = ##class(Ens.Director).StartProduction(pProd)
+    // ponytail: checks the two paths this Dockerfile and the dotnet images use, not the whole PATH
+    if $$$ISOK(sc) && '##class(%File).Exists("/usr/bin/dotnet") && '##class(%File).Exists($system.Util.GetEnviron("DOTNET_ROOT")_"/dotnet") {
+        set sc = ##class(Ens.Director).EnableConfigItem("PexHl7Check", 0, 1)
+        do ##class(Ens.Util.Log).LogWarning($classname(), "StartInBackground", "no .NET runtime found: PexHl7Check disabled, HL7 evidence is IRIS-only")
+    }
+    if $$$ISERR(sc) do ##class(Ens.Util.Log).LogError($classname(), "StartInBackground", $system.Status.GetErrorText(sc))
 }
 
 /// Import and compile src recursively with "ck", print COMPILE_ERROR lines on failure,
@@ -714,6 +736,8 @@ ClassMethod Reload(pSrcDir As %String = "/irisdev/app/src") As %Status
     write "FLAGS_FROM_ENV=", ##class(InteropOps.Config.LLMConfig).SeedFlagsFromEnv(), !
     do ..LoadLabCodeMap()
     do ..MaybeInstallDailyReset()
+    // KB fixture for the agent evidence "similar past incidents" (local vectors, no paid call)
+    if ##class(InteropOps.KB.Store).Count() = 0 write "KB_LOAD=", $SYSTEM.Status.GetErrorText(##class(InteropOps.KB.Store).Load(, .kbN)), " rows ", +$get(kbN), !
     do ..EnsureReviewer()
     do ..EnsureDemoWebApp("IRISAPP")
 

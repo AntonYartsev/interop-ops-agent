@@ -86,7 +86,7 @@ If `ports:` still shows on iris, your compose is older than v2.24.4. Upgrade it.
 ## g) Smoke test
 The scripts use `docker exec` on `interop-ops-agent-iris-1` and read `.env` on the host, so run them from the repo
 root on the server.
-1. REPLAY, 11/12, 0 LLM calls:
+1. REPLAY, 12/12, 0 LLM calls:
    `./scripts/demo.sh --replay` then `EXPECT_REPLAY=1 ./scripts/check.sh` and `./scripts/smoke_generic.sh`.
 2. LIVE: `./scripts/demo.sh --live` (needs the key). It runs all 12 cases, paid, bounded by `IOA_MAX_USD`.
    One case only: `./scripts/demo.sh --live --case C01` (score `correct 1/1`; the cost estimate covers that case's cassette).
@@ -137,7 +137,7 @@ Not wired: no variable in the list is unused in `src/`. One caveat: `IOA_DAILY_R
 `docker-compose.yml` has no `IOA_MAX_USD`, `LLM_PRICE_*` or `IOA_DAILY_RESET` in `environment`. They reach the container only through `env_file: .env`.
 Editing `.env` needs a container recreate (`$DC up -d`). Not verified on a server.
 
-## j) Open questions for Anton
+## j) Open questions
 1. Domain name for `DEMO_DOMAIN`, and an `ACME_EMAIL`.
 2. Basic auth: yes or no? (Off by default.)
 3. Closed: the demo page exists (`/demo/`, README "Judge demo page"); the trace is a table from `Ens.MessageHeader`, no portal.

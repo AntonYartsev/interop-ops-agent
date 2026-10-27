@@ -729,7 +729,8 @@ ClassMethod SwitchingTestBusy(pDir As %String = "") As %String
     set f = $zsearch(dir _ "*")
     while f '= "" {
         set name = $piece(f, "/", *)
-        if (name '= ".") && (name '= "..") && ##class(%File).Exists(f) && '##class(%File).DirectoryExists(f) { set n = n + 1 }
+        // count only what IOA.In.CaseFile picks up (FileSpec *.hl7; case-insensitive to stay conservative); skip dot-files such as .gitkeep
+        if ($extract(name) '= ".") && ($zconvert($extract(name, *-3, *), "L") = ".hl7") && ##class(%File).Exists(f) && '##class(%File).DirectoryExists(f) { set n = n + 1 }
         set f = $zsearch("")
     }
     quit $select(n > 0:"production " _ prod _ " running and " _ n _ " file(s) in " _ dir, 1:"")

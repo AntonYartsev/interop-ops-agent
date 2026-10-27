@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+mkdir -p cases/in cases/archive   # gitignored runtime dirs; IOA.In.CaseFile needs both
 
 CURRENT_STEP="initializing"
 on_error() {

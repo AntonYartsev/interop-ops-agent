@@ -3,13 +3,13 @@
   "case_id":"C01",
   "match":{
     "msh10":"C01-MSG001",
-    "prompt_sha256":"ec1043b41cec50813f8291e7bca4d724f4aa4cf958588dfea0961e8e04f0e891"
+    "prompt_sha256":"d1bf6bbce478c273a85ff93206429d7f859228c9179982dba8d2143450c25bc5"
   },
   "recorded":{
     "profile":"openai",
     "model":"gpt-5.4-mini",
     "build":"2026.3.0AI.154",
-    "at":"2026-10-26T22:22:11Z",
+    "at":"2026-10-27T10:45:56Z",
     "source":"live"
   },
   "turns":[
@@ -28,13 +28,7 @@
           }
         },
         {
-          "name":"SearchLookup",
-          "arguments":{
-            "query":"NA"
-          }
-        },
-        {
-          "name":"GetUCUMTable",
+          "name":"GetValidationEvidence",
           "arguments":{
           }
         },
@@ -56,12 +50,8 @@
           "content":"{\"matches\":[{\"canonical_name\":\"Sodium [Moles/volume] in Serum or Plasma\",\"expected_unit\":\"mmol/L\",\"history_median\":140.15,\"history_units\":{\"mmol/L\":100},\"local_code\":\"NA\",\"loinc\":\"2951-2\",\"panel\":\"BMP\",\"ref_range\":\"135-145\",\"short_name\":\"Sodium\"}],\"query\":\"SOD\"}"
         },
         {
-          "name":"SearchLookup",
-          "content":"{\"matches\":[{\"canonical_name\":\"Sodium [Moles/volume] in Serum or Plasma\",\"expected_unit\":\"mmol/L\",\"history_median\":140.15,\"history_units\":{\"mmol/L\":100},\"local_code\":\"NA\",\"loinc\":\"2951-2\",\"panel\":\"BMP\",\"ref_range\":\"135-145\",\"short_name\":\"Sodium\"}],\"query\":\"NA\"}"
-        },
-        {
-          "name":"GetUCUMTable",
-          "content":"{\"ucum_conversions\":[{\"canonical_code\":\"2345-7\",\"factor\":18.0,\"from_unit\":\"mmol/L\",\"note\":\"Molar to mass conversion for Glucose (MW 180.16 g/mol)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2345-7\",\"factor\":0.0555,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Glucose\",\"to_unit\":\"mmol/L\"},{\"canonical_code\":\"2160-0\",\"factor\":0.01131,\"from_unit\":\"umol/L\",\"note\":\"Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2160-0\",\"factor\":88.4,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Creatinine\",\"to_unit\":\"umol/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"g/L\",\"note\":\"Metric prefix conversion (grams per liter to grams per deciliter)\",\"to_unit\":\"g/dL\"},{\"canonical_code\":\"*\",\"factor\":10.0,\"from_unit\":\"g/dL\",\"note\":\"Metric prefix conversion (grams per deciliter to grams per liter)\",\"to_unit\":\"g/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"mg/L\",\"note\":\"Metric prefix conversion (milligrams per liter to milligrams per deciliter)\",\"to_unit\":\"mg/dL\"}]}"
+          "name":"GetValidationEvidence",
+          "content":"{\"case_id\":\"C01\",\"hl7check\":{\"agree\":0,\"dotnet_only\":0,\"engine\":\"NHapi 3.2.3.0 / v2.5.1 model; IRIS valspec dm-zrny-x\",\"errors\":0,\"findings\":[],\"iris_invalid\":0,\"iris_only\":0,\"messages\":30,\"messages_with_errors\":0,\"status\":\"ok\",\"warnings\":0},\"kb\":{\"embedder\":\"local-hash-384-v1\",\"results\":[{\"score\":0.2265,\"slug\":\"kb-new-code-after-upgrade\",\"title\":\"New local code after a sender LIS upgrade\"},{\"score\":0.1977,\"slug\":\"kb-unknown-local-code\",\"title\":\"Unknown local lab code with no LOINC mapping\"},{\"score\":0.1866,\"slug\":\"kb-ambiguous-code\",\"title\":\"Ambiguous or unrecognized analyte code\"}],\"status\":\"ok\"},\"ucum\":{\"findings\":[{\"code\":\"SOD\",\"count\":30,\"examples\":[\"C01-MSG001\",\"C01-MSG002\",\"C01-MSG003\"],\"expected_unit\":\"\",\"obx\":\"OBX[2]\",\"severity\":\"warning\",\"unit\":\"mmol/L\",\"verdict\":\"code_not_in_lookup\"},{\"basis\":\"prefix\",\"code\":\"GLU\",\"count\":30,\"examples\":[\"C01-MSG001\",\"C01-MSG002\",\"C01-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"flags\":{\"H\":1},\"obx\":\"OBX[1]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"K\",\"count\":30,\"examples\":[\"C01-MSG001\",\"C01-MSG002\",\"C01-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"flags\":{\"L\":2},\"obx\":\"OBX[3]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"CREAT\",\"count\":30,\"examples\":[\"C01-MSG001\",\"C01-MSG002\",\"C01-MSG003\"],\"expected_unit\":\"umol/L\",\"factor\":1,\"obx\":\"OBX[4]\",\"severity\":\"info\",\"unit\":\"umol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"BUN\",\"count\":30,\"examples\":[\"C01-MSG001\",\"C01-MSG002\",\"C01-MSG003\"],\"expected_unit\":\"mg/dL\",\"factor\":1,\"obx\":\"OBX[5]\",\"severity\":\"info\",\"unit\":\"mg/dL\",\"verdict\":\"same_unit\"}],\"status\":\"ok\",\"summary\":\"UCUM: 150 OBX in 30 messages; 120 unit OK vs lookup, 30 need attention\"}}"
         },
         {
           "name":"GetBatchMessages",
@@ -71,16 +61,16 @@
     },
     {
       "role":"assistant",
-      "content":"{\"action\":\"patch_mapping\",\"target\":{\"code\":\"SOD\",\"loinc\":\"2951-2\"},\"reason\":\"SOD is an unknown local code for sodium with the same expected unit mmol/L and matching historical median/range as the existing NA sodium mapping, and there are no critical results.\",\"evidence\":[\"SearchLookup found NA as Sodium [Moles/volume] in Serum or Plasma mapped to LOINC 2951-2 with expected unit mmol/L and reference range 135-145\",\"SearchLookup for SOD returned the same sodium analyte match with expected unit mmol/L and history median 140.15\",\"Batch message C01-MSG001 shows OBX-2 SOD^Sodium, serum/plasma^L with value 138.1 mmol/L, which fits the sodium range and unit\",\"CheckCriticalValues reported 0 critical results in the batch\"],\"field_drift\":null}"
+      "content":"{\"action\":\"patch_mapping\",\"target\":{\"code\":\"SOD\",\"loinc\":\"2951-2\"},\"reason\":\"SOD is an unmapped local code that matches the existing sodium mapping, and the incoming unit/value range align with the receiver's sodium entry; critical-value checking found no critical results.\",\"evidence\":[\"30/30 messages contain OBX-3 SOD with OBX-6 mmol/L and values in the sodium range\",\"Lookup for SOD returns existing sodium mapping local code NA -> LOINC 2951-2 with expected unit mmol/L and ref range 135-145\",\"Validation evidence shows SOD is code_not_in_lookup in 30 messages while HL7 structure checks passed with 0 errors\",\"CheckCriticalValues returned 0 critical results\"],\"field_drift\":null}"
     }
   ],
   "expected":{
     "decision":"patch_mapping",
-    "rationale_short":"SOD is an unknown local code for sodium with the same expected unit mmol/L and matching historical median/range as the existing NA sodium mapping, and there are no critical results."
+    "rationale_short":"SOD is an unmapped local code that matches the existing sodium mapping, and the incoming unit/value range align with the receiver's sodium entry; critical-value checking found no critical results."
   },
   "usage":{
-    "prompt_tokens":4343,
-    "completion_tokens":281
+    "prompt_tokens":5359,
+    "completion_tokens":243
   },
   "llm_calls":2
 }

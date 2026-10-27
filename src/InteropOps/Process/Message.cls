@@ -1,5 +1,5 @@
 /// IOA.Process.Message: one case batch (InteropOps.Msg.CaseRequest from IOA.In.CaseFile) through
-/// ingest -> DTL (InteropOps.Rules.LabToCanonical) -> triage + rules -> [IOA.Agent if rules did not resolve] -> IOA.Gate.Replay -> Decision row.
+/// ingest -> DTL (InteropOps.Rules.LabToCanonical) -> triage + rules -> evidence (PexHl7CheckBP .NET + IOA.Evidence.Ucum, soft) -> [IOA.Agent if rules did not resolve] -> IOA.Gate.Replay -> Decision row.
 /// FinalStatus: pass -> passed, quarantine -> quarantined, escalate (or gate rejected) -> escalated,
 /// gate-passed patch_mapping / convert_unit -> pending_review row, Inbox task (IOA.Workflow), then on Approve IOA.Lookup.Apply + a final row
 /// (applied, Source human / human:auto); on Reject a final row (rejected).
@@ -39,6 +39,15 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <property name='ApplyJSON' type='%String' >
 <parameters><parameter name='MAXLEN' value='' /></parameters>
 </property>
+<property name='Hl7CheckJSON' type='%String' >
+<parameters><parameter name='MAXLEN' value='' /></parameters>
+</property>
+<property name='UcumJSON' type='%String' >
+<parameters><parameter name='MAXLEN' value='' /></parameters>
+</property>
+<property name='EvidenceJSON' type='%String' >
+<parameters><parameter name='MAXLEN' value='' /></parameters>
+</property>
 </context>
 <sequence>
 <scope name='Case' >
@@ -56,6 +65,47 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
  set context.TicketJSON=tTicket.%ToJSON(), context.DecisionJSON=tDecision.%ToJSON(), context.RulesAction=tDecision.action, context.Source="rules"
  $$$LOGINFO("rules "_request.CaseId_": "_tDecision.action_" ("_tDecision.reason_") focus="_tTicket.focus) ]]>
 </code>
+<assign name='Stage Evidence' property="context.Stage" value='"evidence"' action="set" />
+<scope name='HL7 structure evidence (soft)' >
+<call name='HL7 structure check (.NET PEX)' target='PexHl7CheckBP' async='0' >
+<request type='PexHl7.BatchCheckRequest' >
+<assign property="callrequest" value='##class(InteropOps.Evidence.Builder).Hl7BatchRequest(request.CaseId)' action="set" />
+</request>
+<response type='PexHl7.BatchCheckResponse' >
+<assign property="context.Hl7CheckJSON" value='##class(InteropOps.Evidence.Builder).Hl7Summary(callresponse)' action="set" />
+</response>
+</call>
+<faulthandlers>
+<catchall name='HL7 check unavailable' >
+<code name='Degrade HL7 check' >
+<![CDATA[ set context.Hl7CheckJSON=##class(InteropOps.Evidence.Builder).Unavailable("hl7check",$system.Status.GetErrorText(context.%LastError))
+ $$$LOGWARNING("evidence "_request.CaseId_": HL7 .NET check unavailable, continuing without it") ]]>
+</code>
+</catchall>
+</faulthandlers>
+</scope>
+<scope name='UCUM evidence (soft)' >
+<call name='UCUM unit check' target='IOA.Evidence.Ucum' async='0' >
+<request type='InteropOps.Msg.EvidenceRequest' >
+<assign property="callrequest.CaseId" value='request.CaseId' action="set" />
+</request>
+<response type='InteropOps.Msg.EvidenceResponse' >
+<assign property="context.UcumJSON" value='##class(InteropOps.Evidence.Builder).UcumSummary(callresponse)' action="set" />
+</response>
+</call>
+<faulthandlers>
+<catchall name='UCUM check unavailable' >
+<code name='Degrade UCUM check' >
+<![CDATA[ set context.UcumJSON=##class(InteropOps.Evidence.Builder).Unavailable("ucum",$system.Status.GetErrorText(context.%LastError))
+ $$$LOGWARNING("evidence "_request.CaseId_": UCUM check unavailable, continuing without it") ]]>
+</code>
+</catchall>
+</faulthandlers>
+</scope>
+<code name='Evidence for agent' >
+<![CDATA[ set context.EvidenceJSON=##class(InteropOps.Evidence.Builder).Combine(request.CaseId,context.Hl7CheckJSON,context.UcumJSON,context.TicketJSON)
+ $$$LOGINFO("evidence "_request.CaseId_": "_$extract(context.EvidenceJSON,1,500)) ]]>
+</code>
 <if name='Unresolved by rules?' condition='context.RulesAction="escalate"' >
 <true>
 <assign name='Stage Agent' property="context.Stage" value='"agent"' action="set" />
@@ -65,6 +115,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign property="callrequest.FirstMSH10" value='request.FirstMSH10' action="set" />
 <assign property="callrequest.MessageCount" value='request.MessageCount' action="set" />
 <assign property="callrequest.TicketJSON" value='context.TicketJSON' action="set" />
+<assign property="callrequest.EvidenceJSON" value='context.EvidenceJSON' action="set" />
 </request>
 <response type='InteropOps.Msg.AgentResponse' >
 <assign property="context.DecisionJSON" value='callresponse.DecisionJSON' action="set" />
@@ -232,6 +283,9 @@ ClassMethod BuildRow(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.Case
     Set tEvidence = $SELECT($ISOBJECT(tD.evidence): tD.evidence, 1: []), tHave = tEvidence.%ToJSON()
     Set tIt = tTriage.%GetIterator()
     While tIt.%GetNext(, .tLine) { Do:tHave'[tLine tEvidence.%Push(tLine) }
+    // deterministic validation evidence (.NET NHapi second opinion + UCUM), appended after the triage facts
+    Set tIt = ##class(InteropOps.Evidence.Builder).RowLines(pContext.EvidenceJSON).%GetIterator()
+    While tIt.%GetNext(, .tLine) { Do tEvidence.%Push(tLine) }
     Set tReason = tD.reason
     If pContext.GateStatus = "GATE_REJECTED" Set tReason = tReason _ " | gate rejected " _ tAction _ ": " _ {}.%FromJSON(pContext.GateJSON)."gate_reasons".%ToJSON()
     If tStatus = "escalated" {
@@ -243,7 +297,8 @@ ClassMethod BuildRow(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.Case
         "Source": (pContext.Source), "Action": (tAction), "Target": (tTarget), "Factor": (tFactor), "Reason": (tReason),
         "GateResult": (pContext.GateSummary), "FinalStatus": (tStatus), "evidence": (tEvidence),
         "gateDetail": ({"provider_kind": ($SELECT(pContext.Source = "agent": tAgent."provider_kind", 1: "none (rules)")), "dtl": ({}.%FromJSON(pContext.DTLSummaryJSON)),
-            "gate": ({}.%FromJSON(pContext.GateJSON)), "agent": (tAgent)}),
+            "gate": ({}.%FromJSON(pContext.GateJSON)), "agent": (tAgent),
+            "evidence": ({}.%FromJSON($SELECT(pContext.EvidenceJSON = "": "{}", 1: pContext.EvidenceJSON)))}),
         "LLMCalls": (+tAgent."llm_calls"), "TokensIn": (+tAgent."prompt_tokens"), "TokensOut": (+tAgent."completion_tokens")}
     Return tRow
 }

@@ -40,6 +40,41 @@ namespace Hl7Check
         public string findingsJson;
     }
 
+    // Batch variant (one PEX call per case): messagesJson = [{"hl7": "<ER7>", "irisErrors": ["..."]}, ...]
+    public class OruBatchCheckRequest : Message
+    {
+        public string fixture;        // case id, e.g. C10
+        public string irisValSpec;
+        public string messagesJson;
+    }
+
+    public class OruBatchCheckResponse : Message
+    {
+        public string fixture;
+        public string engine;
+        public int messages;
+        public int messagesWithErrors;
+        public int errors;
+        public int warnings;
+        public int infos;
+        public int agree;
+        public int dotnetOnly;
+        public int irisOnly;
+        public string findingsJson;   // aggregated: Finding + count (messages) + examples (first MSH-10s)
+    }
+
+    public class BatchItem
+    {
+        public string hl7 { get; set; }
+        public List<string> irisErrors { get; set; }
+    }
+
+    public class AggFinding : Finding
+    {
+        public int count { get; set; }
+        public List<string> examples { get; set; }
+    }
+
     public class Finding
     {
         public string severity { get; set; }   // error | warning | info
@@ -65,10 +100,74 @@ namespace Hl7Check
 
         public override object OnMessage(object request)
         {
+            if (request is OruBatchCheckRequest batch) return CheckBatch(batch);
             var req = (OruCheckRequest)request;
+            var findings = Check(req.hl7, req.irisErrors, out string mcid);
+            return new OruCheckResponse
+            {
+                fixture = req.fixture,
+                messageControlId = mcid,
+                engine = Engine(req.irisValSpec),
+                errors = findings.Count(f => f.severity == "error"),
+                warnings = findings.Count(f => f.severity == "warning"),
+                infos = findings.Count(f => f.severity == "info"),
+                agree = findings.Count(f => f.source == "both"),
+                dotnetOnly = findings.Count(f => f.source == "dotnet"),
+                irisOnly = findings.Count(f => f.source == "iris"),
+                findingsJson = JsonSerializer.Serialize(findings, JsonOpts)
+            };
+        }
+
+        static readonly JsonSerializerOptions JsonOpts = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+
+        static string Engine(string valSpec) =>
+            "NHapi " + typeof(PipeParser).Assembly.GetName().Version + " / v2.5.1 model; IRIS valspec " + (valSpec ?? "");
+
+        // One PEX round trip per batch: per-message check, then findings aggregated by severity+code+path+source.
+        OruBatchCheckResponse CheckBatch(OruBatchCheckRequest req)
+        {
+            var items = new List<BatchItem>();
+            var agg = new List<AggFinding>();
+            try { items = JsonSerializer.Deserialize<List<BatchItem>>(string.IsNullOrEmpty(req.messagesJson) ? "[]" : req.messagesJson) ?? new List<BatchItem>(); }
+            catch (Exception ex) { agg.Add(new AggFinding { severity = "warning", path = "", code = "BATCH_UNREADABLE", message = ex.Message, source = "dotnet", rule = "structure", count = 0, examples = new List<string>() }); }
+            int withErrors = 0;
+            foreach (var it in items)
+            {
+                var fs = Check(it.hl7, JsonSerializer.Serialize(it.irisErrors ?? new List<string>()), out string mcid);
+                if (fs.Any(f => f.severity == "error")) withErrors++;
+                foreach (var f in fs)
+                {
+                    var a = agg.FirstOrDefault(x => x.severity == f.severity && x.code == f.code && x.path == f.path && x.source == f.source);
+                    if (a == null)
+                    {
+                        a = new AggFinding { severity = f.severity, path = f.path, code = f.code, message = f.message, source = f.source, rule = f.rule, count = 0, examples = new List<string>() };
+                        agg.Add(a);
+                    }
+                    a.count++;
+                    if (a.examples.Count < 3 && mcid != "" && !a.examples.Contains(mcid)) a.examples.Add(mcid);
+                }
+            }
+            return new OruBatchCheckResponse
+            {
+                fixture = req.fixture,
+                engine = Engine(req.irisValSpec),
+                messages = items.Count,
+                messagesWithErrors = withErrors,
+                errors = agg.Where(f => f.severity == "error").Sum(f => f.count),
+                warnings = agg.Where(f => f.severity == "warning").Sum(f => f.count),
+                infos = agg.Where(f => f.severity == "info").Sum(f => f.count),
+                agree = agg.Where(f => f.source == "both").Sum(f => f.count),
+                dotnetOnly = agg.Where(f => f.source == "dotnet").Sum(f => f.count),
+                irisOnly = agg.Where(f => f.source == "iris").Sum(f => f.count),
+                findingsJson = JsonSerializer.Serialize(agg, JsonOpts)
+            };
+        }
+
+        static List<Finding> Check(string hl7In, string irisErrors, out string mcid)
+        {
             var findings = new List<Finding>();
-            string mcid = "";
-            string hl7 = (req.hl7 ?? "").Replace("\r\n", "\r").Replace("\n", "\r").Trim('\r');
+            mcid = "";
+            string hl7 = (hl7In ?? "").Replace("\r\n", "\r").Replace("\n", "\r").Trim('\r');
 
             // 1) NHapi parse (structure + primitive validation of its default ValidationContext).
             IMessage parsed = null;
@@ -115,7 +214,7 @@ namespace Hl7Check
 
             // 2) Diff with IRIS validation.
             var iris = new List<string>();
-            try { iris = JsonSerializer.Deserialize<List<string>>(string.IsNullOrEmpty(req.irisErrors) ? "[]" : req.irisErrors) ?? new List<string>(); }
+            try { iris = JsonSerializer.Deserialize<List<string>>(string.IsNullOrEmpty(irisErrors) ? "[]" : irisErrors) ?? new List<string>(); }
             catch (Exception ex) { findings.Add(F("warning", "", "IRIS_ERRORS_UNREADABLE", ex.Message, "iris-validation")); }
             var segNames = hl7.Split('\r').Select(s => s.Length >= 3 ? s.Substring(0, 3) : s).ToList();
             foreach (var text in iris)
@@ -126,20 +225,7 @@ namespace Hl7Check
                 else findings.Add(F("error", path, "IRIS_ONLY", Short(text), "iris-validation", "iris"));
             }
 
-            var resp = new OruCheckResponse
-            {
-                fixture = req.fixture,
-                messageControlId = mcid,
-                engine = "NHapi " + typeof(PipeParser).Assembly.GetName().Version + " / v2.5.1 model; IRIS valspec " + (req.irisValSpec ?? ""),
-                errors = findings.Count(f => f.severity == "error"),
-                warnings = findings.Count(f => f.severity == "warning"),
-                infos = findings.Count(f => f.severity == "info"),
-                agree = findings.Count(f => f.source == "both"),
-                dotnetOnly = findings.Count(f => f.source == "dotnet"),
-                irisOnly = findings.Count(f => f.source == "iris"),
-                findingsJson = JsonSerializer.Serialize(findings, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull })
-            };
-            return resp;
+            return findings;
         }
 
         // ---- rules -------------------------------------------------------------------------
