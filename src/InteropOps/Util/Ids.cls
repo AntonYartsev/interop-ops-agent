@@ -1,15 +1,15 @@
-/// The ONE place that knows the case / MSH-10 id format. Accepts both separators: "C06-MSG031" and "C06_MSG031".
+/// The ONE place that knows the case / MSH-10 id format. Accepts both separators: "Cnn-MSG031" and "Cnn_MSG031".
 Class InteropOps.Util.Ids
 {
 
-/// "C06-MSG031" or "C06_MSG031" (or a file name "C06.hl7") -> "C06". Returns "" if the id does not start with a case prefix (C + 2 digits).
+/// "Cnn-MSG031" or "Cnn_MSG031" (or a file name "Cnn.hl7") -> "Cnn". Returns "" if the id does not start with a case prefix (C + 2 digits).
 ClassMethod CaseIdFromMSH10(pMsh10 As %String) As %String
 {
     Set tId = $ZSTRIP(pMsh10, "<>W")
     Return $SELECT($MATCH(tId, "(?i)C\d\d([-_.].*)?"): $ZCONVERT($EXTRACT(tId, 1, 3), "U"), 1: "")
 }
 
-/// Canonical MSH-10 form of this feed: "C06_MSG031" -> "C06-MSG031" (only the separator after the case prefix changes).
+/// Canonical MSH-10 form of this feed: "Cnn_MSG031" -> "Cnn-MSG031" (only the separator after the case prefix changes).
 ClassMethod NormMSH10(pMsh10 As %String) As %String
 {
     Set tId = $ZSTRIP(pMsh10, "<>W")
@@ -17,7 +17,7 @@ ClassMethod NormMSH10(pMsh10 As %String) As %String
     Return tId
 }
 
-/// "C01-new-code-sod.hl7" or ".../C01_x.hl7" -> "C01"; "" if the name has no case prefix.
+/// "Cnn-name.hl7" or ".../Cnn_x.hl7" -> "Cnn"; "" if the name has no case prefix.
 ClassMethod CaseIdFromFile(pFileName As %String) As %String
 {
     Set tName = $TRANSLATE(pFileName, "\", "/")

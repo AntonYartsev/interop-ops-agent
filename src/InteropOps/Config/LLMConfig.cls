@@ -404,7 +404,8 @@ ClassMethod PrintStatus() As %Status
 /// 8. openai (with key + IOA_LIVE=1 + REPLAY=1) -> REPLAY
 /// 9. openrouter (with key + IOA_LIVE=1 + REPLAY=1) -> REPLAY
 /// 13. live + key in process -> LIVE; live + no key -> REPLAY + ModeWarning; 14. REPLAY=1 env beats MOCK, MOCK needs no key
-/// 15. MOCK host allowlist (ProviderFactory.KindFor); 16. MOCK budget: not testable here (reported)
+/// 15. MOCK host allowlist (ProviderFactory.KindFor); 16. budget caps apply to every non-REPLAY kind (MOCK too):
+///     source guard in Agent.Operation + Reserve / OverUSD on a saved and restored ^IOA.Budget (no provider, no call)
 ClassMethod CheckSwitching() As %Boolean
 {
     // Guard: refuse while the production is running and cases/in has files (a run may be in progress)
@@ -624,9 +625,45 @@ ClassMethod CheckSwitching() As %Boolean
     write "TRANSITION_15_MOCK_HOST_ALLOWLIST=", $select(ok15:"PASS", 1:"FAIL"), !
     if 'ok15 { set allPass = 0 }
 
-    // 16. MOCK budget: the ^IOA.Budget cap is applied in InteropOps.Agent.Operation (kind LIVE only) and cannot be
-    //     tested here without a provider; reported, not counted in CHECK_SWITCHING.
-    write "TRANSITION_16_MOCK_BUDGET=NOT_TESTED (cap in Agent.Operation applies to kind LIVE)", !
+    // 16. MOCK budget: Agent.Operation applies the call cap (RunAgent -> Reserve) and the USD cap (OnMessage -> OverUSD)
+    //     to every kind except REPLAY, so MOCK is capped like LIVE. Checked without a provider or a call:
+    //     a) source guards: RunAgent caps when ProviderKind '= "REPLAY"; OnMessage handles REPLAY before OverUSD
+    //     b) Reserve / OverUSD on test values in ^IOA.Budget, under a lock; ^IOA.Budget is saved and restored exactly
+    set op = "InteropOps.Agent.Operation", ok16 = 1, note16 = ""
+    set srcR = ..MethodSource(op, "RunAgent"), srcM = ..MethodSource(op, "OnMessage")
+    if '(srcR [ "ProviderKind '= ""REPLAY""") || '(srcR [ "..Reserve(") { set ok16 = 0, note16 = note16 _ " runagent_guard" }
+    set posR = $find(srcM, "ProviderKind = ""REPLAY"""), posU = $find(srcM, "..OverUSD(")
+    if (posR = 0) || (posU = 0) || (posU < posR) { set ok16 = 0, note16 = note16 _ " onmessage_guard" }
+    set budBefore = ..BudgetSnapshot()
+    lock +^IOA.Budget:5
+    if '$test {
+        set ok16 = 0, note16 = note16 _ " budget_locked"
+    } else {
+        kill saved16
+        merge saved16 = ^IOA.Budget
+        try {
+            set callCap = +$parameter(op, "BUDGETCALLS")
+            set ^IOA.Budget("calls") = callCap - 2
+            set r1 = $classmethod(op, "Reserve", 3, .u1)
+            set r2 = $classmethod(op, "Reserve", 2, .u2)
+            set c2 = +$get(^IOA.Budget("calls"))
+            if '((r1 = 0) && (u1 = (callCap - 2)) && (r2 = 1) && (c2 = callCap)) { set ok16 = 0, note16 = note16 _ " calls" }
+            kill ^IOA.Budget("usd")
+            set o1 = $classmethod(op, "OverUSD", .s1, .usdCap)
+            set ^IOA.Budget("usd") = usdCap
+            set o2 = $classmethod(op, "OverUSD", .s2, .usdCap2)
+            if 'o2 || ((usdCap > 0) && o1) { set ok16 = 0, note16 = note16 _ " usd" }
+        } catch ex16 {
+            set ok16 = 0, note16 = note16 _ " error"
+        }
+        kill ^IOA.Budget
+        merge ^IOA.Budget = saved16
+        lock -^IOA.Budget
+    }
+    set budAfter = ..BudgetSnapshot()
+    if budAfter '= budBefore { set ok16 = 0, note16 = note16 _ " budget_not_restored" }
+    write "TRANSITION_16_MOCK_BUDGET=", $select(ok16:"PASS", 1:"FAIL"), $select(note16 = "":"", 1:" [" _ $zstrip(note16, "<>W") _ "]"), !
+    if 'ok16 { set allPass = 0 }
 
     // Real settings must be exactly as before (no test writes ^IOA.Config)
     set after = ..RealFlagsSnapshot()
@@ -639,6 +676,31 @@ ClassMethod CheckSwitching() As %Boolean
     write "CHECK_SWITCHING=", $select(allPass:"PASS", 1:"FAIL"), !
     write $select(allPass:"PASS", 1:"FAIL"), !
     quit allPass
+}
+
+/// Source of one method from the class dictionary ("" if not found); used by CheckSwitching test 16.
+ClassMethod MethodSource(pClass As %String, pMethod As %String) As %String [ Private ]
+{
+    set out = ""
+    set md = ##class(%Dictionary.MethodDefinition).%OpenId(pClass _ "||" _ pMethod)
+    if '$isobject(md) { quit "" }
+    do md.Implementation.Rewind()
+    while 'md.Implementation.AtEnd { set out = out _ md.Implementation.Read(32000) }
+    quit out
+}
+
+/// ^IOA.Budget as one string (counters only), for CheckSwitching test 16 before/after.
+ClassMethod BudgetSnapshot() As %String [ Private ]
+{
+    set out = "", ref = "^IOA.Budget"
+    if $data(@ref)#2 { set out = "=" _ @ref }
+    for {
+        set ref = $query(@ref)
+        quit:ref=""
+        quit:$qsubscript(ref, 0)'="^IOA.Budget"
+        set out = out _ "|" _ ref _ "=" _ @ref
+    }
+    quit out
 }
 
 /// Real live/record/mode settings as one string (flags only, no secrets), for CheckSwitching before/after.

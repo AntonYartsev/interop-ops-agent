@@ -14,8 +14,13 @@ Method TaskHandler(pTask As EnsLib.Workflow.TaskRequest, Output pResponse As Ens
     Set tSC = ##class(EnsLib.Workflow.Engine).%DistributeTask(..#ROLE, pTask, tToken)
     Quit:$$$ISERR(tSC) tSC
     Set tId = ..TaskIdForToken(tToken)
-    Do ..SetDecisionTask(pTask.%Command, tId)
-    If ##class(InteropOps.Config.LLMConfig).AutoApprove() Set tSC = ..Complete(tId, "Approve")
+    Do ..SetDecisionTask(pTask.%Command, tId, pTask.%FormValues.GetAt("SessionId"))
+    If ##class(InteropOps.Config.LLMConfig).AutoApprove() {
+        // mark the task itself as auto-approved (Decision Source human:auto is read from here, not from config)
+        Set tTask = ##class(EnsLib.Workflow.TaskResponse).%OpenId(tId)
+        If $ISOBJECT(tTask) Do tTask.%FormValues.SetAt(1, "AutoApproved") Set tSC = tTask.%Save() Quit:$$$ISERR(tSC) tSC
+        Set tSC = ..Complete(tId, "Approve")
+    }
     Quit tSC
 }
 
@@ -26,10 +31,15 @@ ClassMethod TaskIdForToken(pToken As %String) As %String
     Quit $GET(tId)
 }
 
-/// Put the task id on the latest Decision row of the case (pCaseId = the TaskRequest %Command)
-ClassMethod SetDecisionTask(pCaseId As %String, pTaskId As %String)
+/// Put the task id on the latest Decision row of the case and session (pCaseId = the TaskRequest %Command, pSessionId = %FormValues("SessionId"))
+/// If pSessionId is empty, the latest row of the case.
+ClassMethod SetDecisionTask(pCaseId As %String, pTaskId As %String, pSessionId As %String = "")
 {
-    &sql(SELECT MAX(ID) INTO :tRow FROM InteropOps_Data.Decision WHERE CaseId = :pCaseId)
+    If pSessionId '= "" {
+        &sql(SELECT MAX(ID) INTO :tRow FROM InteropOps_Data.Decision WHERE CaseId = :pCaseId AND SessionId = :pSessionId)
+    } Else {
+        &sql(SELECT MAX(ID) INTO :tRow FROM InteropOps_Data.Decision WHERE CaseId = :pCaseId)
+    }
     Quit:$GET(tRow)=""
     &sql(UPDATE InteropOps_Data.Decision SET TaskId = :pTaskId WHERE ID = :tRow)
 }
@@ -47,13 +57,14 @@ ClassMethod Complete(pTaskId As %String, pAction As %String = "Approve", pUser A
 }
 
 /// Task fields from the case decision: Subject, Message (proposal, evidence, gate), Command = case id
-ClassMethod BuildTask(pCaseId As %String, pDecisionJSON As %String, pGate As %String) As EnsLib.Workflow.TaskRequest
+ClassMethod BuildTask(pCaseId As %String, pDecisionJSON As %String, pGate As %String, pSessionId As %String = "") As EnsLib.Workflow.TaskRequest
 {
     Set tD = {}.%FromJSON(pDecisionJSON), tT = tD.target, tReq = ##class(EnsLib.Workflow.TaskRequest).%New()
     Set tProposal = tD.action _ " " _ $SELECT(tD.action = "patch_mapping": tT.code _ " -> " _ tT.loinc, 1: tT.code _ " " _ tT."from_unit" _ " -> " _ tT."to_unit" _ " x " _ ##class(InteropOps.Gate.Replay).Multiplier(tT))
     Set tReq.%Subject = "Case " _ pCaseId _ ": " _ tProposal
     Set tReq.%Message = $EXTRACT("Case " _ pCaseId _ " | Proposal: " _ tProposal _ " | Reason: " _ tD.reason _ " | Gate: " _ pGate _ " | Evidence: " _ tD.evidence.%ToJSON(), 1, 2000)
     Set tReq.%Actions = "Approve,Reject", tReq.%Command = pCaseId
+    Do tReq.%FormValues.SetAt(pSessionId, "SessionId")
     Quit tReq
 }
 

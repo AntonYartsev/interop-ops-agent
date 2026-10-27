@@ -19,7 +19,7 @@ Property Valid As %Boolean;
 
 Property InvalidReason As %String(MAXLEN = "");
 
-/// "" | max_iterations | timeout | loop_detected | budget_cap | replay_miss | error
+/// "" | max_iterations | timeout | loop_detected | budget_cap | budget_lock | replay_miss | error
 Property ErrorKind As %String;
 
 Property Error As %String(MAXLEN = "");

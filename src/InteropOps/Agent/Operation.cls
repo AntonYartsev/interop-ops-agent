@@ -7,8 +7,11 @@ Include Ensemble
 /// - recording (InteropOps.Agent.Cassette.RecordOn()): MOCK / LIVE runs write <cassette dir>/<CaseId>.json (ioa-replay/1)
 /// - always max_iterations and timeout_ms; build 154 reports MaxIterationsReached for max iterations, timeout and loop
 ///   detection, so the error TEXT is classified; every stop without an answer -> escalate
-/// - LIVE only: hard call cap ^IOA.Budget("calls") <= BUDGETCALLS (max_iterations reserved before Chat()); over the cap the
+/// - LIVE and MOCK (every kind except REPLAY): hard call cap ^IOA.Budget("calls") <= BUDGETCALLS (max_iterations reserved before Chat()); over the cap the
 ///   call is refused -> escalate, ErrorKind budget_cap. Reset: kill ^IOA.Budget
+/// - non-REPLAY: dollar cap ^IOA.Budget("usd") < IOA_MAX_USD (default 0.50); prices LLM_PRICE_IN_PER_M / LLM_PRICE_OUT_PER_M
+///   (USD per 1M tokens, env or ^IOA.Config via LLMConfig.GetVar). Over the cap: the case's cassette is replayed
+///   (warning budget_cap_replay), no cassette -> escalate, ErrorKind budget_cap
 Class InteropOps.Agent.Operation Extends Ens.BusinessOperation
 {
 
@@ -20,7 +23,7 @@ Parameter MAXITERATIONS = 3;
 /// wall-clock cap for one Chat() (ms)
 Parameter TIMEOUTMS = 120000;
 
-/// LIVE calls allowed in total (^IOA.Budget("calls"))
+/// LLM calls (LIVE and MOCK) allowed in total (^IOA.Budget("calls"))
 Parameter BUDGETCALLS = 60;
 
 Property Provider As %RegisteredObject;
@@ -58,6 +61,18 @@ Method OnMessage(pRequest As InteropOps.Msg.AgentRequest, Output pResponse As In
     Try {
         If ..ProviderKind = "REPLAY" {
             Do ..Provider.Replay($THIS, pRequest, pResponse)
+        } ElseIf ..OverUSD(.tSpent, .tCap) {
+            If $ISOBJECT(##class(InteropOps.Agent.Cassette).Find(pRequest.CaseId, pRequest.FirstMSH10)) {
+                Set pResponse.ProviderKind = "REPLAY"
+                Do ##class(InteropOps.Agent.ReplayProvider).%New().Replay($THIS, pRequest, pResponse)
+                Set tC = {}.%FromJSON($SELECT(pResponse.CassetteJSON = "": "{}", 1: pResponse.CassetteJSON))
+                Set:'$ISOBJECT(tC.warnings) tC.warnings = []
+                Do tC.warnings.%Push("budget_cap_replay"), tC.%Set("budget_usd", tSpent _ " of " _ tCap)
+                Set pResponse.CassetteJSON = tC.%ToJSON()
+                $$$LOGWARNING("[IOA.Agent] " _ pRequest.CaseId _ " USD cap " _ tSpent _ " of " _ tCap _ ": replayed from cassette")
+            } Else {
+                Do ..Fail(pResponse, "budget_cap", "USD budget: " _ tSpent _ " of " _ tCap _ " USD spent, no cassette for this case")
+            }
         } Else {
             Do ..RunAgent(pRequest, pResponse)
         }
@@ -74,9 +89,9 @@ Method OnMessage(pRequest As InteropOps.Msg.AgentRequest, Output pResponse As In
 
 Method RunAgent(pRequest As InteropOps.Msg.AgentRequest, pResponse As InteropOps.Msg.AgentResponse)
 {
-    Set tLive = (..ProviderKind = "LIVE"), tMaxIt = ..#MAXITERATIONS
+    Set tLive = (..ProviderKind '= "REPLAY"), tMaxIt = ..#MAXITERATIONS
     If tLive && '..Reserve(tMaxIt, .tUsed) {
-        Do ..Fail(pResponse, "budget_cap", "LIVE call budget: " _ tUsed _ " of " _ ..#BUDGETCALLS _ " calls used, " _ tMaxIt _ " more refused")
+        Do ..Fail(pResponse, $SELECT(tUsed < 0: "budget_lock", 1: "budget_cap"), "call budget (LIVE/MOCK): " _ tUsed _ " of " _ ..#BUDGETCALLS _ " calls used, " _ tMaxIt _ " more refused")
         Return
     }
     Set tAgent = ##class(%AI.Agent).%New(..Provider)
@@ -124,10 +139,12 @@ Method RunAgent(pRequest As InteropOps.Msg.AgentRequest, pResponse As InteropOps
     }
 }
 
-/// Reserve pN LIVE calls in ^IOA.Budget("calls"); 0 if that would pass BUDGETCALLS (pUsed = calls used before)
+/// Reserve pN LLM calls (LIVE/MOCK) in ^IOA.Budget("calls"); 0 if that would pass BUDGETCALLS (pUsed = calls used before)
+/// or if the lock is not acquired in 10 s (pUsed = -1, ErrorKind budget_lock)
 ClassMethod Reserve(pN As %Integer, Output pUsed As %Integer) As %Boolean
 {
     Lock +^IOA.Budget:10
+    If '$TEST Set pUsed = -1 Return 0
     Set pUsed = +$GET(^IOA.Budget("calls")), tOk = (pUsed + pN <= ..#BUDGETCALLS)
     Set:tOk ^IOA.Budget("calls") = pUsed + pN
     Lock -^IOA.Budget
@@ -137,14 +154,32 @@ ClassMethod Reserve(pN As %Integer, Output pUsed As %Integer) As %Boolean
 /// Replace a reservation of pReserved calls with the pUsed calls really made; add tokens
 ClassMethod Settle(pReserved As %Integer, pUsed As %Integer, pTokensIn As %Integer, pTokensOut As %Integer)
 {
+    // no lock in 10 s: still record the usage (the spend must not be lost), unlocked, and warn
     Lock +^IOA.Budget:10
-    Set ^IOA.Budget("calls") = ^IOA.Budget("calls") - pReserved + pUsed
+    Set tLocked = $TEST
+    If 'tLocked { $$$LOGWARNING("[IOA.Agent] ^IOA.Budget lock timeout in Settle; usage recorded without lock") }
+    Set ^IOA.Budget("calls") = $GET(^IOA.Budget("calls")) - pReserved + pUsed
     Set ^IOA.Budget("tokens_in") = $GET(^IOA.Budget("tokens_in")) + pTokensIn
     Set ^IOA.Budget("tokens_out") = $GET(^IOA.Budget("tokens_out")) + pTokensOut
-    Lock -^IOA.Budget
+    Set ^IOA.Budget("usd") = $GET(^IOA.Budget("usd")) + (pTokensIn * ..Price("LLM_PRICE_IN_PER_M", 0.75) + (pTokensOut * ..Price("LLM_PRICE_OUT_PER_M", 4.50))) / 1000000
+    Lock:tLocked -^IOA.Budget
 }
 
 /// Build 154 uses the code MaxIterationsReached for max iterations, timeout and loop detection: classify by text
+/// 1 if the spent USD (^IOA.Budget("usd")) reached IOA_MAX_USD (default 0.50)
+ClassMethod OverUSD(Output pSpent As %Numeric, Output pCap As %Numeric) As %Boolean
+{
+    Set pSpent = $FNUMBER(+$GET(^IOA.Budget("usd")), "", 4), pCap = ..Price("IOA_MAX_USD", 0.50)
+    Quit pSpent >= pCap
+}
+
+/// Numeric setting from env or ^IOA.Config (LLMConfig.GetVar); pDefault if unset. Default prices are assumed list prices.
+ClassMethod Price(pName As %String, pDefault As %Numeric) As %Numeric
+{
+    Set tV = ##class(InteropOps.Config.LLMConfig).GetVar(pName)
+    Quit $SELECT(tV = "": pDefault, 1: +tV)
+}
+
 ClassMethod ErrorKind(pErr As %String) As %String
 {
     Set tLow = $ZCONVERT(pErr, "L")

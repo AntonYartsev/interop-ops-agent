@@ -229,7 +229,7 @@ if [ "$ACTIVE_KIND" = "MOCK" ]; then
   echo "MOCK: IRIS Mode()=${ACTIVE_LLM_MODE:-?}, record=${ACTIVE_RECORD:-0}"
 elif [ "$ACTIVE_LLM_MODE" = "LIVE" ]; then
   # Estimate only: token usage recorded in the cassettes x assumed prices (PRICE_IN / PRICE_OUT, USD per 1M tokens)
-  EST_USD="$(PRICE_IN="${PRICE_IN:-0.75}" PRICE_OUT="${PRICE_OUT:-4.50}" python3 - "$EXPECTED_REPLAY_DIR" <<'PY' 2>/dev/null || echo "?"
+  EST_USD="$(PRICE_IN="${PRICE_IN:-${LLM_PRICE_IN_PER_M:-0.75}}" PRICE_OUT="${PRICE_OUT:-${LLM_PRICE_OUT_PER_M:-4.50}}" python3 - "$EXPECTED_REPLAY_DIR" <<'PY' 2>/dev/null || echo "?"
 import glob, json, os, sys
 tin = tout = 0
 for f in glob.glob(os.path.join(sys.argv[1], "C*.json")):

@@ -97,7 +97,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign name='Stage Review task' property="context.Stage" value='"workflow"' action="set" />
 <call name='Review task' target='IOA.Workflow' async='0' >
 <request type='EnsLib.Workflow.TaskRequest' >
-<assign property="callrequest" value='##class(InteropOps.Workflow.Operation).BuildTask(request.CaseId,context.DecisionJSON,context.GateSummary)' action="set" />
+<assign property="callrequest" value='##class(InteropOps.Workflow.Operation).BuildTask(request.CaseId,context.DecisionJSON,context.GateSummary,process.%SessionId)' action="set" />
 </request>
 <response type='EnsLib.Workflow.TaskResponse' >
 <assign property="context.TaskId" value='callresponse.%Id()' action="set" />
@@ -177,7 +177,7 @@ ClassMethod RecordDecision(pContext As Ens.BP.Context, pRequest As InteropOps.Ms
 
 /// Final row after the human review (last row wins): Approve -> applied, Reject -> rejected.
 /// Any other task action (Cancelled, or "" from CompleteTask(task,"") in ResetDemo): no row, Decision has no "cancelled" status.
-/// Source human:auto if LLMConfig.AutoApprove() (the Inbox task still exists and is completed).
+/// Source human:auto if the task itself is marked AutoApproved (%FormValues, set by Workflow.Operation.TaskHandler).
 ClassMethod RecordHuman(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.CaseRequest, pSessionId As %Integer, Output pRow As %DynamicObject) As %Status
 {
     Set pRow = ..BuildRow(pContext, pRequest, pSessionId), tApproved = (pContext.TaskAction = "Approve")
@@ -185,7 +185,8 @@ ClassMethod RecordHuman(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.C
         Set pRow = {"Action": (pRow.Action), "FinalStatus": "none", "Source": "human"}
         Quit $$$OK
     }
-    Set tAuto = ##class(InteropOps.Config.LLMConfig).AutoApprove()
+    Set tTask = ##class(EnsLib.Workflow.TaskResponse).%OpenId(pContext.TaskId)
+    Set tAuto = $ISOBJECT(tTask) && +tTask.%FormValues.GetAt("AutoApproved")
     Set tApply = {}.%FromJSON($SELECT(pContext.ApplyJSON = "": "{}", 1: pContext.ApplyJSON))
     Set tApplyFail = $SELECT('tApproved: "", tApply.error '= "": "apply error: " _ $EXTRACT(##class(InteropOps.Util.Redact).Text(tApply.error), 1, 200), tApply.applied = "": "apply skipped: " _ $SELECT(tApply.skipped '= "": tApply.skipped, 1: "no apply result"), 1: "")
     Set tBase = $PIECE(pRow.Reason, " | gate passed; awaiting", 1)

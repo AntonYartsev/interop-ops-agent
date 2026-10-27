@@ -1,5 +1,5 @@
 /// Cassettes, schema ioa-replay/1, one file per case: <dir>/<CaseId>.json
-/// {"schema":"ioa-replay/1","case_id":"C01","match":{"msh10","prompt_sha256"},"recorded":{"profile","model","build","at","source"},
+/// {"schema":"ioa-replay/1","case_id":"Cnn","match":{"msh10","prompt_sha256"},"recorded":{"profile","model","build","at","source"},
 ///  "turns":[{"role":"assistant","tool_calls":[{"name","arguments"}],"tool_results":[{"name","content"}]},{"role":"assistant","content":"<final JSON>"}],
 ///  "usage":{"prompt_tokens","completion_tokens"},"expected":{"decision","rationale_short"}}
 /// Extensions: recorded.source = mock|live|rules; "llm_calls"; "error":{"kind","text"} when the agent stopped without an answer.
