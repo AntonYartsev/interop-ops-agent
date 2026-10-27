@@ -1,0 +1,30 @@
+# Overlay: docker compose -f docker-compose.yml -f deploy/docker-compose.demo.yml ...
+# Paths resolve against the FIRST file's directory (the repo root), so use ./deploy/... here.
+services:
+  iris:
+    # Remove ALL host port publishing from the base file (portal 52773, superserver 1972, aux 8080).
+    # `!reset` needs Compose >= v2.24.4. Older compose MERGES the ports lists and keeps the base ports.
+    # Check `docker compose version`, and verify with
+    # `docker compose -f docker-compose.yml -f deploy/docker-compose.demo.yml config` that iris has no `ports:`.
+    ports: !reset []
+  caddy:
+    image: caddy:2
+    restart: always
+    depends_on:
+      - iris
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DEMO_DOMAIN=${DEMO_DOMAIN:?set DEMO_DOMAIN in .env}
+      - ACME_EMAIL=${ACME_EMAIL:?set ACME_EMAIL in .env}
+      - DEMO_AUTH=${DEMO_AUTH:-auth_off}
+      - DEMO_BASIC_AUTH_USER=${DEMO_BASIC_AUTH_USER:-}
+      - DEMO_BASIC_AUTH_HASH=${DEMO_BASIC_AUTH_HASH:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:

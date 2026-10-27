@@ -16,6 +16,8 @@ LIVE_FLAG=""   # "" = keep live as seeded from env by the reset (IOA_LIVE, else 
 RESET_ONLY=0
 NO_RESET=0
 AUTOAPPROVE=1
+CASE_ONLY=""   # --case Cnn: run only that case (score shows 1/1)
+EXHAUST_BUDGET=0   # --exhaust-budget: ^IOA.Budget("usd") above IOA_MAX_USD for this run, restored on exit
 while [ $# -gt 0 ]; do
   case "$1" in
     --live|--replay)
@@ -39,8 +41,25 @@ while [ $# -gt 0 ]; do
       NO_RESET=1
       shift
       ;;
+    --exhaust-budget)
+      EXHAUST_BUDGET=1
+      shift
+      ;;
+    --case|--case=*)
+      if [ "$1" = "--case" ]; then
+        [ $# -ge 2 ] || { echo "ERROR: --case needs a case id, e.g. --case C01" >&2; exit 1; }
+        CASE_ONLY="$2"; shift 2
+      else
+        CASE_ONLY="${1#--case=}"; shift
+      fi
+      CASE_ONLY="$(printf '%s' "$CASE_ONLY" | tr '[:lower:]' '[:upper:]')"
+      if ! printf '%s' "$CASE_ONLY" | grep -Eq '^C[0-9]{2}$'; then
+        echo "ERROR: --case expects an id like C01 (got: ${CASE_ONLY})" >&2
+        exit 1
+      fi
+      ;;
     -h|--help)
-      echo "Usage: $0 [--live | --replay] [--manual] [--reset | --no-reset]"
+      echo "Usage: $0 [--live | --replay] [--manual] [--reset | --no-reset] [--case Cnn] [--exhaust-budget]"
       echo "  Every run starts with a full reset: InteropOps.Setup.ResetDemo() (cancel open IOA-Reviewers Workflow tasks,"
       echo "  Decision.Purge, reload IOA.LabCodeMap from data/labcodemap.csv, kill ^IOA.UnitFactor and ^IOA.Batch,"
       echo "  live/record seeded from IOA_LIVE/IOA_RECORD, 0 when unset) and leftover files in cases/in are moved to"
@@ -52,11 +71,15 @@ while [ $# -gt 0 ]; do
       echo "  --reset    Only do the reset, then exit"
       echo "  --no-reset Debugging: keep agent patches (LabCodeMap, ^IOA.UnitFactor) from earlier runs;"
       echo "             Decision rows are still purged so the table shows only this run"
+      echo "  --exhaust-budget  After the reset (or with --no-reset), set ^IOA.Budget(\"usd\") above IOA_MAX_USD for this run:"
+      echo "             LIVE/MOCK agent cases then replay their cassette (warning budget_cap_replay, no API call) or"
+      echo "             escalate with budget_cap without one. REPLAY ignores the budget. The added amount is taken back on exit."
+      echo "  --case Cnn Run only case Cnn (cases/Cnn-*.hl7) with --live or --replay; the score covers that case (1/1)"
       exit 0
       ;;
     *)
       echo "Unknown option: $1" >&2
-      echo "Usage: $0 [--live | --replay] [--manual] [--reset | --no-reset]" >&2
+      echo "Usage: $0 [--live | --replay] [--manual] [--reset | --no-reset] [--case Cnn] [--exhaust-budget]" >&2
       exit 1
       ;;
   esac
@@ -84,6 +107,13 @@ WEB_PORT="${WEB_PORT:-${IRIS_PORT_WEB:-52273}}"
 CASES_SRC="${CASES_SRC:-cases}"
 CASES_IN_HOST="${CASES_IN_HOST:-cases/in}"
 CASE_GLOB="${CASE_GLOB:-C??-*.hl7}"
+if [ -n "$CASE_ONLY" ]; then
+  CASE_GLOB="${CASE_ONLY}-*.hl7"
+  if ! compgen -G "${CASES_SRC}/${CASE_GLOB}" >/dev/null; then
+    echo "ERROR: --case ${CASE_ONLY}: no file ${CASES_SRC}/${CASE_GLOB}" >&2
+    exit 1
+  fi
+fi
 REPORT_CMD="${REPORT_CMD:-##class(InteropOps.Data.Decision).ReportJSON()}"
 EXPECTED_REPLAY_DIR="${EXPECTED_REPLAY_DIR:-replay}"
 EXPECTED_MAP_FILE="${EXPECTED_MAP_FILE:-cases/expected.json}"
@@ -122,6 +152,11 @@ do_reset() {
   fi
 }
 
+if [ "$RESET_ONLY" -eq 1 ] && [ "$EXHAUST_BUDGET" -eq 1 ]; then
+  echo "ERROR: --exhaust-budget needs a run; it cannot be combined with --reset" >&2
+  exit 1
+fi
+
 if [ "$RESET_ONLY" -eq 1 ]; then
   do_reset
   echo "RESET: OK (open review tasks cancelled, decisions purged, LabCodeMap reloaded, ^IOA.UnitFactor and ^IOA.Batch cleared, $(printf '%s\n' "$RESET_OUT" | sed -n 's/^RESET_FLAGS_FROM_ENV=//p' | head -n 1))"
@@ -135,14 +170,44 @@ else
 fi
 
 TMP_OUT="$(mktemp)"
+BUDGET_DELTA=""   # set by --exhaust-budget: USD added to ^IOA.Budget("usd"), subtracted again on exit
+BUDGET_OLDDEF=0
 cleanup_live() {
   rm -f "$TMP_OUT"
+  if [ -n "$BUDGET_DELTA" ]; then
+    # take back only what --exhaust-budget added (usage recorded during the run stays); kill usd if it was unset before
+    printf '%s\n' \
+      "lock +^IOA.Budget:10 set r=\$get(^IOA.Budget(\"usd\"))-${BUDGET_DELTA} if ${BUDGET_OLDDEF}=0,r<=0.000001 { kill ^IOA.Budget(\"usd\") } else { set ^IOA.Budget(\"usd\")=r } lock -^IOA.Budget" \
+      'write "BUDGET_RESTORED usd=",$get(^IOA.Budget("usd"),"(unset)")," over_usd=",##class(InteropOps.Agent.Operation).OverUSD(),!' \
+      'halt' \
+      | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" 2>/dev/null | tr -d '\r' | grep '^BUDGET_RESTORED' || true
+    BUDGET_DELTA=""
+  fi
   printf '%s\n' \
     'do ##class(InteropOps.Config.LLMConfig).SetLive(0)' \
     'halt' \
     | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >/dev/null 2>&1 || true
 }
 trap cleanup_live EXIT INT TERM
+
+if [ "$EXHAUST_BUDGET" -eq 1 ]; then
+  # spent := IOA_MAX_USD + 0.01 (only raised, never lowered); OverUSD() is the check Agent.Operation uses before a run
+  BUDGET_OUT="$(printf '%s\n' \
+    'set cap=##class(InteropOps.Agent.Operation).Price("IOA_MAX_USD",0.50),olddef=($data(^IOA.Budget("usd"))#2),old=+$get(^IOA.Budget("usd")),new=$select(old>(cap+0.01):old,1:cap+0.01)' \
+    'lock +^IOA.Budget:10 set ^IOA.Budget("usd")=new lock -^IOA.Budget' \
+    'write "BUDGET_EXHAUSTED usd=",^IOA.Budget("usd")," cap=",cap," over_usd=",##class(InteropOps.Agent.Operation).OverUSD()," delta=",new-old," olddef=",olddef,!' \
+    'halt' \
+    | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" 2>&1 | tr -d '\r' | grep '^BUDGET_EXHAUSTED' || true)"
+  if ! printf '%s' "$BUDGET_OUT" | grep -q 'over_usd=1'; then
+    echo "ERROR: --exhaust-budget: could not set ^IOA.Budget(\"usd\") over IOA_MAX_USD (${BUDGET_OUT:-no output})" >&2
+    exit 1
+  fi
+  BUDGET_DELTA="$(printf '%s' "$BUDGET_OUT" | sed -n 's/.* delta=\([^ ]*\).*/\1/p')"
+  BUDGET_OLDDEF="$(printf '%s' "$BUDGET_OUT" | sed -n 's/.* olddef=\([01]\).*/\1/p')"
+  BUDGET_OLDDEF="${BUDGET_OLDDEF:-1}"
+  echo "$BUDGET_OUT"
+  echo "Budget exhausted for this run: LIVE/MOCK agent cases replay their cassette (budget_cap_replay) or escalate (budget_cap); REPLAY ignores the budget."
+fi
 
 printf '%s\n' \
   'do ##class(InteropOps.Setup).SyncEnvToGlobal()' \
@@ -171,6 +236,10 @@ shopt -s nullglob
 CASE_FILES=( "${CASES_SRC}"/${CASE_GLOB} )
 shopt -u nullglob
 
+if [ "${#CASE_FILES[@]}" -eq 0 ] && [ -n "$CASE_ONLY" ]; then
+  echo "ERROR: --case ${CASE_ONLY}: no file ${CASES_SRC}/${CASE_GLOB}" >&2
+  exit 1
+fi
 if [ "${#CASE_FILES[@]}" -eq 0 ]; then
   echo "core not deployed yet: no case files matching ${CASES_SRC}/${CASE_GLOB}"
   echo "STATUS: SKIPPED"
@@ -229,10 +298,10 @@ if [ "$ACTIVE_KIND" = "MOCK" ]; then
   echo "MOCK: IRIS Mode()=${ACTIVE_LLM_MODE:-?}, record=${ACTIVE_RECORD:-0}"
 elif [ "$ACTIVE_LLM_MODE" = "LIVE" ]; then
   # Estimate only: token usage recorded in the cassettes x assumed prices (PRICE_IN / PRICE_OUT, USD per 1M tokens)
-  EST_USD="$(PRICE_IN="${PRICE_IN:-${LLM_PRICE_IN_PER_M:-0.75}}" PRICE_OUT="${PRICE_OUT:-${LLM_PRICE_OUT_PER_M:-4.50}}" python3 - "$EXPECTED_REPLAY_DIR" <<'PY' 2>/dev/null || echo "?"
+  EST_USD="$(CASE_ONLY="$CASE_ONLY" PRICE_IN="${PRICE_IN:-${LLM_PRICE_IN_PER_M:-0.75}}" PRICE_OUT="${PRICE_OUT:-${LLM_PRICE_OUT_PER_M:-4.50}}" python3 - "$EXPECTED_REPLAY_DIR" <<'PY' 2>/dev/null || echo "?"
 import glob, json, os, sys
 tin = tout = 0
-for f in glob.glob(os.path.join(sys.argv[1], "C*.json")):
+for f in glob.glob(os.path.join(sys.argv[1], (os.environ.get("CASE_ONLY") or "C") + "*.json")):
     try:
         u = json.load(open(f)).get("usage") or {}
     except Exception:
@@ -374,7 +443,7 @@ while [ "$ELAPSED" -lt "$TIMEOUT" ]; do
 done
 
 if command -v python3 >/dev/null 2>&1; then
-  printf '%s' "$REPORT_JSON" | WEB_PORT="$WEB_PORT" NS="$NS" EXPECTED_MAP_FILE="$EXPECTED_MAP_FILE" CONFIG_MODE="${ACTIVE_KIND:-}" python3 "${SCRIPT_DIR}/score_demo.py"
+  printf '%s' "$REPORT_JSON" | WEB_PORT="$WEB_PORT" NS="$NS" EXPECTED_MAP_FILE="$EXPECTED_MAP_FILE" CONFIG_MODE="${ACTIVE_KIND:-}" SCORE_CASES="${CASE_ONLY:+$CASE_IDS_CSV}" python3 "${SCRIPT_DIR}/score_demo.py"
 else
   echo "python3 not found; raw ReportJSON:"
   echo "$REPORT_JSON"

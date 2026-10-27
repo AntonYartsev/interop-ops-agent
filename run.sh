@@ -13,6 +13,56 @@ on_error() {
 }
 trap on_error ERR
 
+# --- Arguments and server guard. Runs before any docker command. ---
+# ./run.sh         local stack (Mac/Linux), iris ports published on the host (51272/52273/52280)
+# ./run.sh --demo  server stack: -f docker-compose.yml -f deploy/docker-compose.demo.yml (iris ports removed,
+#                  Caddy on 80/443 in front of the web port; needs DEMO_DOMAIN and ACME_EMAIL, see deploy/README.md)
+DEMO_OVERLAY="deploy/docker-compose.demo.yml"
+USE_DEMO=0
+for arg in "$@"; do
+  case "$arg" in
+    --demo) USE_DEMO=1 ;;
+    -h|--help)
+      echo "Usage: ./run.sh [--demo]"
+      echo "  (no flag)  local stack, iris ports published on the host"
+      echo "  --demo     server stack with ${DEMO_OVERLAY} (no iris ports on the host, Caddy on 80/443)"
+      exit 0 ;;
+    *) echo "Unknown option: ${arg} (see ./run.sh --help)" >&2; exit 2 ;;
+  esac
+done
+# DEMO_DOMAIN set in the environment or in .env (value never printed) = this is a server: refuse without the overlay
+demo_domain_set() {
+  [ -n "${DEMO_DOMAIN:-}" ] && return 0
+  [ -f .env ] && grep -Eq "^[[:space:]]*(export[[:space:]]+)?DEMO_DOMAIN=[\"']?[^\"'[:space:]#]" .env
+}
+COMPOSE_FILES=()
+if [ "$USE_DEMO" -eq 0 ]; then
+  if demo_domain_set; then
+    echo "REFUSED: DEMO_DOMAIN is set (environment or .env), so this looks like the public demo server." >&2
+    echo "         Plain ./run.sh would publish the iris ports 51272/52273/52280 on all interfaces." >&2
+    echo "         Use ./run.sh --demo (adds ${DEMO_OVERLAY}), or unset DEMO_DOMAIN for a local run." >&2
+    echo "FINAL STATUS: FAIL"
+    exit 3
+  fi
+  if [ "$(uname -s)" = "Linux" ]; then
+    echo "WARNING: Linux host without --demo: iris ports 51272/52273/52280 are published on all interfaces." >&2
+    echo "         On a public server use ./run.sh --demo (deploy/README.md)." >&2
+  fi
+else
+  if [ ! -f "$DEMO_OVERLAY" ]; then
+    echo "REFUSED: --demo needs ${DEMO_OVERLAY}, not found." >&2
+    echo "FINAL STATUS: FAIL"
+    exit 3
+  fi
+  if ! demo_domain_set; then
+    echo "REFUSED: --demo needs DEMO_DOMAIN (and ACME_EMAIL) in .env or the environment (deploy/README.md e)." >&2
+    echo "FINAL STATUS: FAIL"
+    exit 3
+  fi
+  COMPOSE_FILES=(-f docker-compose.yml -f "$DEMO_OVERLAY")
+  echo "Demo mode: docker compose ${COMPOSE_FILES[*]} (iris ports not published, Caddy on 80/443)"
+fi
+
 # Default archive by host architecture (both are published on the EAP portal for build 154); IRIS_IMAGE_TAR overrides.
 case "$(uname -m)" in
   arm64|aarch64) DEFAULT_TAR="../irishealth_arm64-community-2026.3.0AI.154.0-docker.tar.gz" ;;
@@ -155,12 +205,15 @@ check_port_free_or_owned() {
   return 0
 }
 
-check_port_free_or_owned "$IRIS_PORT_SUPER"
-check_port_free_or_owned "$IRIS_PORT_WEB"
-check_port_free_or_owned "$IRIS_PORT_AUX"
+if [ "$USE_DEMO" -eq 0 ]; then
+  check_port_free_or_owned "$IRIS_PORT_SUPER"
+  check_port_free_or_owned "$IRIS_PORT_WEB"
+  check_port_free_or_owned "$IRIS_PORT_AUX"
+fi
 
-CURRENT_STEP="starting stack with docker compose -p ${PROJECT_NAME}"
-docker compose -p "$PROJECT_NAME" up -d --build
+CURRENT_STEP="starting stack with docker compose -p ${PROJECT_NAME}${COMPOSE_FILES[*]+ ${COMPOSE_FILES[*]}}"
+# ${arr[@]+...}: an empty array is "unbound" under set -u in bash 3.2 (macOS)
+docker compose -p "$PROJECT_NAME" ${COMPOSE_FILES[@]+"${COMPOSE_FILES[@]}"} up -d --build
 
 CURRENT_STEP="waiting for ${CONTAINER_NAME} to become healthy (timeout 300s)"
 ELAPSED=0
@@ -208,6 +261,17 @@ RESOLVED_MODE="$(echo "$INIT_OUT" | sed -n 's/^LLM_MODE=//p' | tr -d '\r' | tail
 PORTAL_URL="http://localhost:${IRIS_PORT_WEB}/csp/sys/UtilHome.csp"
 PRODUCTION_URL="http://localhost:${IRIS_PORT_WEB}/csp/irisapp/EnsPortal.ProductionConfig.zen?\$NAMESPACE=IRISAPP&PRODUCTION=InteropOps.Production"
 WORKFLOW_URL="http://localhost:${IRIS_PORT_WEB}/csp/irisapp/EnsPortal.WFWorklist.zen?\$NAMESPACE=IRISAPP"
+
+if [ "$USE_DEMO" -eq 1 ]; then
+  echo "------------------------------------------------------------"
+  echo "Demo mode: the web port is not published on the host, so the localhost HTTP checks are skipped."
+  echo "Check https://<DEMO_DOMAIN>/ through Caddy (deploy/README.md, f and g)."
+  echo "LLM Profile:           ${RESOLVED_PROFILE}"
+  echo "LLM Mode:              ${RESOLVED_MODE}"
+  echo "------------------------------------------------------------"
+  echo "FINAL STATUS: OK"
+  exit 0
+fi
 
 CURRENT_STEP="HTTP-checking Management Portal URL (${PORTAL_URL})"
 PORTAL_HTTP="$(curl -s -o /dev/null -w '%{http_code}' -u _SYSTEM:SYS "$PORTAL_URL")"

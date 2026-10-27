@@ -110,6 +110,9 @@ def main():
     except Exception as e:
         print(f"ERROR: cannot read {EXP}: {e}", file=sys.stderr)
         return 2
+    only = [c.strip().upper() for c in os.environ.get("SCORE_CASES", "").split(",") if c.strip()]
+    if only:  # demo.sh --case: score only the cases that were sent
+        expected = {k: v for k, v in expected.items() if k.upper() in only}
     by = {}
     for r in rows if isinstance(rows, list) else []:
         if isinstance(r, dict):

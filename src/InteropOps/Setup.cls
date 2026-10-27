@@ -276,6 +276,122 @@ ClassMethod EnsureReviewer() As %Status
     quit $$$OK
 }
 
+/// Idempotently ensure the judge demo web application /demo (InteropOps.Demo.REST, see README "Judge demo page").
+/// Unauthenticated access with exactly one application role, IOA-DemoWeb: Read on the namespace routine and globals
+/// databases, Use on %Service_EmbeddedPython (the local KB embedder), Use on IOA_DemoWrite and SQL SELECT on the four
+/// tables the page reads. No %Ens_*, portal, other service or %All rights; the page itself has no SQL/exec input.
+/// Writes (run a case, approve/reject its review task) only inside InteropOps.Demo.Write: the privileged routine
+/// application IOA.DemoWrite (type 4, routines of that class only, resource IOA_DemoWrite:U) adds role IOA-DemoWrite
+/// (Read/Write on the globals database, nothing else) for the critical section; see InteropOps.Demo.Write.
+ClassMethod EnsureDemoWebApp(pNamespace As %String = "IRISAPP") As %Status
+{
+    set roleName = "IOA-DemoWeb", app = "/demo", sc = $$$OK
+    set wRole = "IOA-DemoWrite", wApp = "IOA.DemoWrite", wRes = "IOA_DemoWrite", wClass = "InteropOps.Demo.Write"
+    set tables = $listbuild("InteropOps_Data.Decision", "Ens.MessageHeader", "EnsLib_Workflow.TaskResponse", "InteropOps_KB.Entry")
+    try {
+        new $NAMESPACE
+        set $NAMESPACE = "%SYS"
+        kill res
+        set codeDb = "", dataRes = ""
+        if ##class(Config.Namespaces).Get(pNamespace, .ns) {
+            set codeDb = $get(ns("Routines"))
+            for k = "Routines", "Globals" {
+                kill db
+                if ##class(Config.Databases).Get($get(ns(k)), .db) {
+                    set dbo = ##class(SYS.Database).%OpenId($get(db("Directory")))
+                    if $isobject(dbo) && (dbo.ResourceName '= "") {
+                        set res(dbo.ResourceName) = "R"
+                        set:(k = "Globals") dataRes = dbo.ResourceName
+                    }
+                }
+            }
+        }
+        // KB search (local embedder) runs in Embedded Python
+        set:##class(Security.Resources).Exists("%Service_EmbeddedPython") res("%Service_EmbeddedPython") = "U"
+        // gate of the privileged routine application: only this role may ask for the write role
+        if '##class(Security.Resources).Exists(wRes) {
+            set sc = ##class(Security.Resources).Create(wRes, "InteropOps demo page: may raise IOA-DemoWrite in " _ wClass, "")
+            quit:$$$ISERR(sc)
+        }
+        set res(wRes) = "U"
+        set resList = "", r = ""
+        for {
+            set r = $order(res(r))
+            quit:(r = "")
+            set resList = $select(resList = "": "", 1: resList _ ",") _ r _ ":" _ res(r)
+        }
+        if '##class(Security.Roles).Exists(roleName) {
+            set sc = ##class(Security.Roles).Create(roleName, "InteropOps judge demo page (/demo): read-only; writes via " _ wApp, resList)
+        } else {
+            kill rProps
+            do ##class(Security.Roles).Get(roleName, .rProps)
+            set rProps("Resources") = resList, rProps("Description") = "InteropOps judge demo page (/demo): read-only; writes via " _ wApp
+            set sc = ##class(Security.Roles).Modify(roleName, .rProps)
+        }
+        quit:$$$ISERR(sc)
+
+        // write role: Read/Write on the globals database only (raised in InteropOps.Demo.Write, dropped after)
+        set wList = $select(dataRes = "": "", 1: dataRes _ ":RW")
+        if '##class(Security.Roles).Exists(wRole) {
+            set sc = ##class(Security.Roles).Create(wRole, "InteropOps demo page write section (" _ wClass _ " only)", wList)
+        } else {
+            kill rProps
+            do ##class(Security.Roles).Get(wRole, .rProps)
+            set rProps("Resources") = wList
+            set sc = ##class(Security.Roles).Modify(wRole, .rProps)
+        }
+        quit:$$$ISERR(sc)
+
+        kill pProps
+        if ##class(Security.Applications).Exists(wApp) do ##class(Security.Applications).Get(wApp, .pProps)
+        set pProps("Type") = 4
+        set pProps("Description") = "InteropOps demo page: write role for " _ wClass
+        set pProps("Routines") = wClass _ ":" _ codeDb _ ":1"
+        set pProps("MatchRoles") = ":" _ wRole
+        set pProps("Resource") = wRes
+        set pProps("Enabled") = 1
+        if ##class(Security.Applications).Exists(wApp) {
+            set sc = ##class(Security.Applications).Modify(wApp, .pProps)
+        } else {
+            set sc = ##class(Security.Applications).Create(wApp, .pProps)
+        }
+        quit:$$$ISERR(sc)
+
+        kill aProps
+        if ##class(Security.Applications).Exists(app) do ##class(Security.Applications).Get(app, .aProps)
+        set aProps("NameSpace") = pNamespace
+        set aProps("DispatchClass") = "InteropOps.Demo.REST"
+        set aProps("Description") = "InteropOps judge demo page"
+        set aProps("AutheEnabled") = 64
+        set aProps("MatchRoles") = ":" _ roleName
+        set aProps("Resource") = ""
+        set aProps("Enabled") = 1
+        set aProps("UseCookies") = 0
+        set aProps("InbndWebServicesEnabled") = 0
+        set aProps("DeepSeeEnabled") = 0
+        set aProps("iKnowEnabled") = 0
+        if ##class(Security.Applications).Exists(app) {
+            set sc = ##class(Security.Applications).Modify(app, .aProps)
+        } else {
+            set sc = ##class(Security.Applications).Create(app, .aProps)
+        }
+        quit:$$$ISERR(sc)
+
+        set $NAMESPACE = pNamespace
+        set ^IOA.Demo("cfg", "dataResource") = dataRes
+        set ptr = 0
+        while $listnext(tables, ptr, t) {
+            set gsc = $SYSTEM.SQL.Security.GrantPrivilege("SELECT", t, "TABLE", roleName)
+            if $$$ISERR(gsc) write "DEMO_WEBAPP_WARNING=grant SELECT on ", t, " failed", !
+        }
+        write "DEMO_WEBAPP=", app, " role=", roleName, " resources=", resList, " write=", wApp, "->", wRole, ":", wList, !
+    } catch ex {
+        set sc = ex.AsStatus()
+    }
+    if $$$ISERR(sc) write "DEMO_WEBAPP_WARNING=", $SYSTEM.Status.GetErrorText(sc), !
+    quit sc
+}
+
 /// Idempotently load CSV lines (key,value) from file into Ens.Util.LookupTable "IOA.LabCodeMap",
 /// skipping header and comment lines. Missing file logs a warning and returns $$$OK.
 ClassMethod LoadLabCodeMap(file As %String = "/irisdev/app/data/labcodemap.csv") As %Status
@@ -344,8 +460,8 @@ ClassMethod LoadLabCodeMap(file As %String = "/irisdev/app/data/labcodemap.csv")
 ///   5. ^IOA.Batch: raw HL7 of the last batch per case (the BPL rewrites it at ingest; Apply reprocesses from it)
 ///   6. live and record: seeded from env (IOA_LIVE, IOA_RECORD; process env, else .env), 0 when not set
 ///      (LLMConfig.SeedFlagsFromEnv). demo.sh --live / --replay then set live for the run.
-///   7. ^IOA.Budget killed (LIVE call counter; Agent.Operation refuses LIVE calls over BUDGETCALLS, so a
-///      leftover count would turn a LIVE demo into budget_cap escalations). The old count is printed.
+///   7. ^IOA.Budget killed (LIVE/MOCK call counter and usd; Agent.Operation refuses LIVE/MOCK calls over BUDGETCALLS, so a
+///      leftover count would turn a LIVE/MOCK demo into budget_cap escalations). The old count is printed.
 ///   8. ^IOA.Dev killed (dev overrides; a leftover mock_base_url silently makes the run MOCK, cassette_dir
 ///      redirects cassettes). Whether mock_base_url was set is printed before the kill.
 ///   9. ^IOA.Config("dataDir") / ("casesDir") killed (Util.Paths defaults apply); ^IOA.Config("autoapprove")
@@ -524,6 +640,7 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
 
     set deepSeeEnabled = ..EnsureDeepSee("/csp/irisapp")
     do ..EnsureReviewer()
+    do ..EnsureDemoWebApp("IRISAPP")
 
     set prodName = "InteropOps.Production"
     do ##class(Ens.Director).SetAutoStart(prodName)
@@ -598,6 +715,7 @@ ClassMethod Reload(pSrcDir As %String = "/irisdev/app/src") As %Status
     do ..LoadLabCodeMap()
     do ..MaybeInstallDailyReset()
     do ..EnsureReviewer()
+    do ..EnsureDemoWebApp("IRISAPP")
 
     set prodName = "InteropOps.Production"
     do ##class(Ens.Director).GetProductionStatus(.curProd, .curState)
@@ -677,7 +795,7 @@ ClassMethod InstallDailyReset() As %Status
             set sc = $$$ERROR($$$GeneralError, "cannot open task " _ id)
         } else {
             set task.Name = name
-            set task.Description = "Interop Ops Agent: daily reset of the LIVE call counter ^IOA.Budget at 00:00 UTC"
+            set task.Description = "Interop Ops Agent: daily reset of the LIVE/MOCK call counter ^IOA.Budget at 00:00 UTC"
             set task.NameSpace = "IRISAPP"
             set task.TaskClass = "InteropOps.Task.DailyReset"
             set task.TimePeriod = 0

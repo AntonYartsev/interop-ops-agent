@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Hl7Check</AssemblyName>
+    <IrisSdk Condition="'$(IrisSdk)' == ''">/irissdk</IrisSdk>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="nhapi.model.v251" Version="3.2.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Supplied by the gateway at runtime (Utils.dll must be in %gatewayExtraClasspaths). -->
+    <Reference Include="InterSystems.Data.IRISClient"><HintPath>$(IrisSdk)/InterSystems.Data.IRISClient.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="InterSystems.Data.Utils"><HintPath>$(IrisSdk)/InterSystems.Data.Utils.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

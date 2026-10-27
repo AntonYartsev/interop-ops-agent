@@ -1,0 +1,30 @@
+# Only the demo path is proxied. Everything else is 404, so the Management Portal (/csp/sys*),
+# /csp/broker, /api/mgmnt, /api/atelier and the default /csp/user page are NOT reachable.
+# ACME_EMAIL is required (compose fails fast if unset): an empty `email` global option does not parse.
+{
+	email {$ACME_EMAIL}
+}
+
+# Optional basic auth. Default DEMO_AUTH=auth_off (empty snippet). Set DEMO_AUTH=auth_on in .env
+# plus DEMO_BASIC_AUTH_USER / DEMO_BASIC_AUTH_HASH (hash: docker run --rm caddy:2 caddy hash-password).
+(auth_off) {
+}
+(auth_on) {
+	basic_auth {
+		{$DEMO_BASIC_AUTH_USER} {$DEMO_BASIC_AUTH_HASH}
+	}
+}
+
+{$DEMO_DOMAIN} {
+	import {$DEMO_AUTH:auth_off}
+
+	# Judge demo page: IRIS web application /demo (InteropOps.Demo.REST, see README "Judge demo page").
+	# IRIS matches the application only with the trailing slash, so /demo is redirected to /demo/.
+	redir /demo /demo/ 308
+	handle /demo/* {
+		reverse_proxy iris:52773
+	}
+	handle {
+		respond 404
+	}
+}

@@ -3,11 +3,30 @@
   <Document name="interop-ops-agent.ZPM">
     <Module>
       <Name>interop-ops-agent</Name>
-      <Version>0.1.0</Version>
-      <Description>InterSystems IRIS AI Hub EAP Interop Ops Agent</Description>
+      <Version>0.2.0</Version>
+      <Description>HL7 v2 lab-feed triage agent on InterSystems IRIS AI Hub (EAP): Interoperability production, deterministic gate, Workflow review, REPLAY cassettes, judge demo page /demo/. Synthetic data only.</Description>
+      <Keywords>interoperability hl7 ai-hub agent workflow vector-search</Keywords>
+      <Author>
+        <Person>Anton Yartsev</Person>
+        <CopyrightDate>2026</CopyrightDate>
+        <License>MIT</License>
+      </Author>
       <Packaging>module</Packaging>
+      <!-- Tested only on IRIS 2026.3.0AI build 154 (AI Hub EAP: %AI.Agent, %AI.Provider). The AI Hub
+           requirement itself cannot be expressed here. -->
+      <SystemRequirements Version=">=2026.3" Interoperability="enabled"/>
       <SourcesRoot>src</SourcesRoot>
+      <!-- All 45 classes (src/InteropOps/**.cls). pex/ (optional .NET PEX) is not part of the module. -->
       <Resource Name="InteropOps.PKG"/>
+      <!-- No FileCopy: cases/, data/ and replay/ are read in place from the module root, which must be
+           the repository mounted at /home/irisowner/dev or /irisdev/app (InteropOps.Util.Paths,
+           LLMConfig DEFAULTREPLAYDIR / DEFAULTCASESIN, Production FilePath). No WebApplication: /demo,
+           its roles and the IOA.DemoWrite privileged routine application are created by
+           Setup.EnsureDemoWebApp, which InitAndStartProduction calls. -->
+      <Invoke Class="InteropOps.Setup" Method="InitAndStartProduction" Phase="Activate" When="After" CheckStatus="true">
+        <Arg>${root}src</Arg>
+      </Invoke>
+      <AfterInstallMessage>interop-ops-agent: production InteropOps.Production started in namespace IRISAPP (REPLAY unless IOA_LIVE=1). Judge page: /demo/ . Demo run: ./scripts/demo.sh --replay (from the repository).</AfterInstallMessage>
     </Module>
   </Document>
 </Export>
