@@ -10,12 +10,6 @@ Parameter FALLBACKMODELOPENAI = "gpt-4.1-mini";
 /// Default OpenRouter model
 Parameter DEFAULTMODELOPENROUTER = "google/gemini-2.5-flash";
 
-/// Default replay directory inside the container
-Parameter DEFAULTREPLAYDIR = "/irisdev/app/replay";
-
-/// Default cases input directory inside the container
-Parameter DEFAULTCASESIN = "/irisdev/app/cases/in/";
-
 /// Read an environment variable or test override, with fallback to ^IOA.Config for non-secret values.
 /// Never logs or persists secret values.
 ClassMethod GetVar(pName As %String, ByRef pOverrides) As %String
@@ -242,11 +236,12 @@ ClassMethod APIKeyRef() As %String
     quit "@{env:" _ ..KeyVar() _ "}"
 }
 
-/// Directory containing deterministic replay fixtures (env IOA_REPLAY_DIR, default /irisdev/app/replay)
+/// Directory containing deterministic replay fixtures (env IOA_REPLAY_DIR, default Util.Paths.ReplayDir():
+/// IPM install directory replay/, else /irisdev/app/replay/, else /home/irisowner/dev/replay/)
 ClassMethod ReplayDir() As %String
 {
     set val = ..GetVar("IOA_REPLAY_DIR")
-    quit $select(val="":..#DEFAULTREPLAYDIR, 1:val)
+    quit $select(val="":##class(InteropOps.Util.Paths).ReplayDir(), 1:val)
 }
 
 /// Whether pending_review decisions are auto-approved (^IOA.Config("autoapprove")=1, from IOA_AUTOAPPROVE or demo.sh).
@@ -279,11 +274,11 @@ ClassMethod SetRecord(pOn As %Boolean = 0) As %Status
     quit $$$OK
 }
 
-/// Directory monitored for incoming HL7 case files (env IOA_CASES_IN, default /irisdev/app/cases/in/)
+/// Directory monitored for incoming HL7 case files (env IOA_CASES_IN, default Util.Paths.CasesDir() in/)
 ClassMethod CasesIn() As %String
 {
     set val = ..GetVar("IOA_CASES_IN")
-    quit $select(val="":..#DEFAULTCASESIN, 1:val)
+    quit $select(val="":##class(InteropOps.Util.Paths).CasesDir()_"in/", 1:val)
 }
 
 /// Resolve active LLM profile, provider, model, key variable name, API key reference, paths, and mode (LIVE|REPLAY).
@@ -326,12 +321,12 @@ ClassMethod Resolve(Output pConfig, ByRef pOverrides) As %DynamicObject
     set warning = ..ModeWarningFor(configComplete, keyPresent, liveEnabled, forceReplay, keyVar)
 
     set rawReplayDir = ..GetVar("IOA_REPLAY_DIR", .pOverrides)
-    set replayDir = $select(rawReplayDir="":..#DEFAULTREPLAYDIR, 1:rawReplayDir)
+    set replayDir = $select(rawReplayDir="":##class(InteropOps.Util.Paths).ReplayDir(), 1:rawReplayDir)
 
     set recordEnabled = ..RecordEnabled(.pOverrides)
 
     set rawCasesIn = ..GetVar("IOA_CASES_IN", .pOverrides)
-    set casesIn = $select(rawCasesIn="":..#DEFAULTCASESIN, 1:rawCasesIn)
+    set casesIn = $select(rawCasesIn="":##class(InteropOps.Util.Paths).CasesDir()_"in/", 1:rawCasesIn)
 
     set pConfig("profile") = profile
     set pConfig("provider") = provider

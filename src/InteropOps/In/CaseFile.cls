@@ -13,6 +13,8 @@ Method OnInit() As %Status
 {
     // FilePath comes from InteropOps.Config.LLMConfig.CasesIn() (env IOA_CASES_IN), not only from the production XData
     Set ..Adapter.FilePath = ##class(InteropOps.Config.LLMConfig).CasesIn()
+    // XData ArchivePath is the repository mount; an IPM install without it archives into Util.Paths.CasesDir() archive/
+    Set:'##class(%File).DirectoryExists(..Adapter.ArchivePath) ..Adapter.ArchivePath = ##class(InteropOps.Util.Paths).CasesDir() _ "archive/"
     Return ##super()
 }
 

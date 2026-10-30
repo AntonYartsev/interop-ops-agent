@@ -21,13 +21,20 @@
            without the .NET runtime PexHl7Check soft-fails. -->
       <Resource Name="InteropOps.PKG"/>
       <Resource Name="PexHl7.PKG" Directory="../pex/src"/>
-      <!-- No FileCopy: cases/, data/ and replay/ are read in place from the module root, which must be
-           the repository mounted at /home/irisowner/dev or /irisdev/app (InteropOps.Util.Paths,
-           LLMConfig DEFAULTREPLAYDIR / DEFAULTCASESIN, Production FilePath). No WebApplication: /demo,
-           its roles and the IOA.DemoWrite privileged routine application are created by
+      <!-- FileCopy copies cases/, data/ and replay/ into dedicated install directory ${mgrdir}interop-ops-agent/.
+           InteropOps.Util.Paths reads the repository mounts first (/irisdev/app/, then /home/irisowner/dev/), so the
+           docker-compose dev flow and demo.sh stay unchanged, and uses ${mgrdir}interop-ops-agent/ when no repository is mounted.
+           On uninstall, %File.RemoveDirectoryTree ensures ${mgrdir}interop-ops-agent/ is cleaned up.
+           No WebApplication: /demo, its roles and the IOA.DemoWrite privileged routine application are created by
            Setup.EnsureDemoWebApp, which InitAndStartProduction calls. -->
+      <FileCopy Name="cases/" Target="${mgrdir}interop-ops-agent/cases/"/>
+      <FileCopy Name="data/" Target="${mgrdir}interop-ops-agent/data/"/>
+      <FileCopy Name="replay/" Target="${mgrdir}interop-ops-agent/replay/"/>
       <Invoke Class="InteropOps.Setup" Method="InitAndStartProduction" Phase="Activate" When="After" CheckStatus="true">
         <Arg>${root}src</Arg>
+      </Invoke>
+      <Invoke Class="%File" Method="RemoveDirectoryTree" Phase="Clean" When="After" CheckStatus="false">
+        <Arg>${mgrdir}interop-ops-agent</Arg>
       </Invoke>
       <AfterInstallMessage>interop-ops-agent: production InteropOps.Production started in namespace IRISAPP (REPLAY unless IOA_LIVE=1). Judge page: /demo/ . Demo run: ./scripts/demo.sh --replay (from the repository).</AfterInstallMessage>
     </Module>

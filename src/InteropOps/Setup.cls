@@ -392,18 +392,13 @@ ClassMethod EnsureDemoWebApp(pNamespace As %String = "IRISAPP") As %Status
     quit sc
 }
 
-/// Idempotently load CSV lines (key,value) from file into Ens.Util.LookupTable "IOA.LabCodeMap",
+/// Idempotently load CSV lines (key,value) from file (default Util.Paths.DataDir() labcodemap.csv) into Ens.Util.LookupTable "IOA.LabCodeMap",
 /// skipping header and comment lines. Missing file logs a warning and returns $$$OK.
-ClassMethod LoadLabCodeMap(file As %String = "/irisdev/app/data/labcodemap.csv") As %Status
+ClassMethod LoadLabCodeMap(file As %String = "") As %Status
 {
     set csvPath = $zstrip(file, "<>W")
     if (csvPath = "") {
-        set csvPath = "/irisdev/app/data/labcodemap.csv"
-    }
-    if '##class(%File).Exists(csvPath) {
-        if (csvPath = "/irisdev/app/data/labcodemap.csv") && ##class(%File).Exists("/home/irisowner/dev/data/labcodemap.csv") {
-            set csvPath = "/home/irisowner/dev/data/labcodemap.csv"
-        }
+        set csvPath = ##class(InteropOps.Util.Paths).DataDir() _ "labcodemap.csv"
     }
     if '##class(%File).Exists(csvPath) {
         write "LABCODEMAP_WARNING=File not found: ", csvPath, "; skipping seed load", !
@@ -634,6 +629,10 @@ ClassMethod InitAndStartProduction(pSrcDir As %String = "/irisdev/app/src") As %
     set casesInDir = ##class(InteropOps.Config.LLMConfig).CasesIn()
     if (casesInDir '= "") && ('##class(%File).DirectoryExists(casesInDir)) {
         do ##class(%File).CreateDirectoryChain(casesInDir)
+    }
+    set casesArchiveDir = ##class(InteropOps.Util.Paths).CasesDir() _ "archive/"
+    if (casesArchiveDir '= "") && ('##class(%File).DirectoryExists(casesArchiveDir)) {
+        do ##class(%File).CreateDirectoryChain(casesArchiveDir)
     }
     set replayDir = ##class(InteropOps.Config.LLMConfig).ReplayDir()
     if (replayDir '= "") && ('##class(%File).DirectoryExists(replayDir)) {
