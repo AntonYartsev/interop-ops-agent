@@ -1,0 +1,43 @@
+{
+  "synthetic": true,
+  "blind": true,
+  "note": "SYNTHETIC blind cases from scripts/gen_blind_cases.py (seed 20261030). Expected answers fixed before the first LIVE run; no cassettes.",
+  "criteria": "same as cases/expected.json",
+  "cases": {
+    "C13": {
+      "action": "patch_mapping",
+      "target": {
+        "code": "PLAT",
+        "loinc": "777-3"
+      },
+      "file": "C13-new-code-plat.hl7"
+    },
+    "C14": {
+      "action": "convert_unit",
+      "target": {
+        "code": "HGB",
+        "from_unit": "g/L",
+        "to_unit": "g/dL",
+        "multiplier": 0.1
+      },
+      "file": "C14-hgb-gl.hl7"
+    },
+    "C15": {
+      "action": "escalate",
+      "target": null,
+      "file": "C15-new-code-lac.hl7"
+    },
+    "C16": {
+      "action": "pass",
+      "target": null,
+      "file": "C16-critical-glu.hl7"
+    },
+    "C17": {
+      "action": "quarantine",
+      "target": {
+        "msh10": "C17-MSG017"
+      },
+      "file": "C17-duplicate-flood-bmp.hl7"
+    }
+  }
+}

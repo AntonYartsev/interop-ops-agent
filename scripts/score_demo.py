@@ -89,7 +89,7 @@ def mode_line(rows):
     calls = 0
     for r in rows:
         try:
-            calls += int(float(g(r, "llmCalls") or 0))
+            calls += int(float(g(r, "LLMCalls") or 0))
         except (TypeError, ValueError):
             pass
     cfg = os.environ.get("CONFIG_MODE", "").strip()

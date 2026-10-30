@@ -1,0 +1,7 @@
+# sha256  file  messages
+5bd62e8f8e6713deae7f2e3bf4da7f185aedb7627c4d9d3ad963843460f2c1a4  C13-new-code-plat.hl7  30
+f4bc88f21bb4be3655ed082f54d6d906d4e96f8b9a69d9a3c4f400d8693f3939  C14-hgb-gl.hl7  30
+1e966681da1b7cdabb08fd02ec40489824bf8b3785e6f199c678feb1efbf9220  C15-new-code-lac.hl7  30
+e824b715fe1efdacc00770c6b084aec00cf678461ce6fb37987fb7af5ea0a366  C16-critical-glu.hl7  30
+3d4ad69ae6dd933054de7d156fe1adbbd7b42311dd9a272b3c46d4f34ea754eb  C17-duplicate-flood-bmp.hl7  70
+0430f5845782c5cfe50ded833fed2705018c1fb4ac71af9f22d851df1bda8964  expected.json

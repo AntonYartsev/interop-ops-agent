@@ -161,7 +161,8 @@ ClassMethod Settle(pReserved As %Integer, pUsed As %Integer, pTokensIn As %Integ
     Set ^IOA.Budget("calls") = $GET(^IOA.Budget("calls")) - pReserved + pUsed
     Set ^IOA.Budget("tokens_in") = $GET(^IOA.Budget("tokens_in")) + pTokensIn
     Set ^IOA.Budget("tokens_out") = $GET(^IOA.Budget("tokens_out")) + pTokensOut
-    Set ^IOA.Budget("usd") = $GET(^IOA.Budget("usd")) + (pTokensIn * ..Price("LLM_PRICE_IN_PER_M", 0.75) + (pTokensOut * ..Price("LLM_PRICE_OUT_PER_M", 4.50))) / 1000000
+    // ObjectScript has no operator precedence: the division must stay inside the parentheses
+    Set ^IOA.Budget("usd") = $GET(^IOA.Budget("usd")) + ((pTokensIn * ..Price("LLM_PRICE_IN_PER_M", 0.75) + (pTokensOut * ..Price("LLM_PRICE_OUT_PER_M", 4.50))) / 1000000)
     Lock:tLocked -^IOA.Budget
 }
 
