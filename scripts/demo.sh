@@ -85,7 +85,12 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-ACTIVE_PROFILE="$(printf '%s' "${LLM_PROFILE:-openai}" | tr '[:upper:]' '[:lower:]')"
+# The container decides the profile (it was set at container creation); the host shell / .env is only the fallback.
+CONTAINER_PROFILE="$(docker exec "${CONTAINER:-interop-ops-agent-iris-1}" printenv LLM_PROFILE 2>/dev/null || true)"
+if [ -n "$CONTAINER_PROFILE" ] && [ -n "${LLM_PROFILE:-}" ] && [ "$CONTAINER_PROFILE" != "$LLM_PROFILE" ]; then
+  echo "WARN: LLM_PROFILE is ${LLM_PROFILE} in .env/shell but ${CONTAINER_PROFILE} in the container; using ${CONTAINER_PROFILE}. Run ./run.sh to apply .env." >&2
+fi
+ACTIVE_PROFILE="$(printf '%s' "${CONTAINER_PROFILE:-${LLM_PROFILE:-openai}}" | tr '[:upper:]' '[:lower:]')"
 if [ "$ACTIVE_PROFILE" = "openrouter" ]; then
   ACTIVE_PROFILE="openrouter"
   ACTIVE_KEY_VAR="OPENROUTER_API_KEY"
@@ -214,8 +219,17 @@ printf '%s\n' \
   'write "KEY_PRESENT=",##class(InteropOps.Config.LLMConfig).KeyPresent(),!' \
   'do ##class(InteropOps.Config.LLMConfig).Resolve(.ioacfg) write "KEY_CONFIGURED=",+$get(ioacfg("keyConfigured")),!' \
   'write "HAS_DECISION_REPORT=",(##class(%Dictionary.CompiledClass).%ExistsId("InteropOps.Data.Decision")&&##class(%Dictionary.CompiledMethod).%ExistsId("InteropOps.Data.Decision||ReportJSON")),!' \
+  'write "HAS_REVIEWER_ROLE=",##class(EnsLib.Workflow.RoleDefinition).%ExistsId("IOA-Reviewers"),!' \
   'halt' \
   | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$TMP_OUT" 2>&1 || true
+
+# Container created with plain "docker compose up -d" (no ./run.sh): the image has the code but not the setup
+# (Workflow role, demo web app, KB). Run the same setup step as run.sh, once.
+if grep -q "HAS_DECISION_REPORT=1" "$TMP_OUT" && ! grep -q "HAS_REVIEWER_ROLE=1" "$TMP_OUT"; then
+  echo "SETUP: Workflow role IOA-Reviewers missing (container not started by ./run.sh); running Setup.InitAndStartProduction()"
+  printf '%s\n' 'do ##class(InteropOps.Setup).InitAndStartProduction()' 'halt' \
+    | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" 2>&1 | grep -E "PRODUCTION_STATUS=|REVIEWER_WARNING" || true
+fi
 
 # Key flags only (1/0), never values. REPLAY does not need a key, so this is a hint, not an error.
 if ! grep -q "KEY_PRESENT=1" "$TMP_OUT" && grep -q "KEY_CONFIGURED=1" "$TMP_OUT"; then
