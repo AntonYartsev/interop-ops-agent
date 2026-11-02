@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.git
+.claude
+.DS_Store
+*.log
+*.tar
+*.tar.gz
+cases/in/*
+cases/archive/*
+docs
+deploy

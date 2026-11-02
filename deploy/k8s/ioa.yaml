@@ -1,0 +1,164 @@
+# Online demo on k3s: one IRIS pod on node-ru, only /demo/ is public (Traefik + cert-manager).
+# LLM traffic leaves through a squid proxy on node-us: OpenRouter answers 403 to the RU node IP.
+# Secret ioa-env is created from the repo .env (see README.md), it is not in this file.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ioa
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ioa-cpf
+  namespace: ioa
+data:
+  # Small fixed buffers: node-ru has 3.8 GB RAM, shared with other apps. Auto sizing gave 920 MiB RSS on a 7.8 GB host.
+  merge.cpf: |
+    [config]
+    globals=0,0,64,0,0,0
+    routines=32
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iris
+  namespace: ioa
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: iris}
+  template:
+    metadata:
+      labels: {app: iris}
+    spec:
+      # node-ru: IRIS 2026.3 needs AVX2, the node-us CPU (Xeon E5-2697 v2) has none ("Unsupported CPU").
+      nodeSelector:
+        kubernetes.io/hostname: node-ru
+      containers:
+        - name: iris
+          image: ioa-k8s:1
+          imagePullPolicy: Never
+          # Same setup step as run.sh: compile, env -> ^IOA.Config, reviewer, /demo web app, daily reset, start.
+          args:
+            - --after
+            - iris session IRIS -U IRISAPP '##class(InteropOps.Setup).InitAndStartProduction()'
+          envFrom:
+            - secretRef: {name: ioa-env}
+          env:
+            - {name: ISC_CPF_MERGE_FILE, value: /cpf/merge.cpf}
+            # LIVE via OpenRouter; spend per day stays under IOA_MAX_USD (default 0.50), reset daily.
+            - {name: IOA_LIVE, value: "1"}
+            - {name: LLM_PROFILE, value: openrouter}
+            - {name: LLM_MODEL, value: openai/gpt-6-luna}
+            - {name: LLM_PRICE_IN_PER_M, value: "0.10"}
+            - {name: LLM_PRICE_OUT_PER_M, value: "0.50"}
+            - {name: HTTPS_PROXY, value: "http://llm-proxy.ioa.svc.cluster.local:3128"}
+            - {name: NO_PROXY, value: "localhost,127.0.0.1"}
+            - {name: IOA_DAILY_RESET, value: "1"}
+          ports:
+            - {name: http, containerPort: 52773}
+          volumeMounts:
+            - {name: cpf, mountPath: /cpf}
+          resources:
+            requests: {memory: 768Mi, cpu: 200m}
+            limits: {memory: 1536Mi}
+          readinessProbe:
+            httpGet: {path: /demo/, port: http}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+      volumes:
+        - name: cpf
+          configMap: {name: ioa-cpf}
+---
+# CONNECT proxy for LLM calls, US egress. ClusterIP only; default squid.conf allows 10.0.0.0/8 to SSL ports.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-proxy
+  namespace: ioa
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: llm-proxy}
+  template:
+    metadata:
+      labels: {app: llm-proxy}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: node-us
+      containers:
+        - name: squid
+          image: ubuntu/squid:6.6-24.04_edge
+          ports:
+            - {name: proxy, containerPort: 3128}
+          resources:
+            requests: {memory: 64Mi, cpu: 20m}
+            limits: {memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-proxy
+  namespace: ioa
+spec:
+  selector: {app: llm-proxy}
+  ports:
+    - {name: proxy, port: 3128, targetPort: proxy}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iris
+  namespace: ioa
+spec:
+  selector: {app: iris}
+  ports:
+    - {name: http, port: 52773, targetPort: http}
+---
+# Everything outside /demo/ (portal, /csp/sys, /api/...) redirects to /demo/.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: to-demo
+  namespace: ioa
+spec:
+  redirectRegex:
+    regex: ^https?://([^/]+)/.*
+    replacement: https://${1}/demo/
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ioa-demo
+  namespace: ioa
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ioa.antonyartsev.com
+      http:
+        paths:
+          - {path: /demo/, pathType: Prefix, backend: {service: {name: iris, port: {name: http}}}}
+  tls:
+    - {hosts: [ioa.antonyartsev.com], secretName: ioa-tls}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ioa-redirect
+  namespace: ioa
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: ioa-to-demo@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ioa.antonyartsev.com
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: iris, port: {name: http}}}}
+  tls:
+    - {hosts: [ioa.antonyartsev.com], secretName: ioa-tls}
