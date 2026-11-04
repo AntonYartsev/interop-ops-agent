@@ -9,6 +9,9 @@ services:
     env_file:
       - .env
     restart: always
+    # iris-main writes iris-main.log into its cwd; keep it out of the bind-mounted repo
+    # (on Linux the repo belongs to the host user, and irisowner (uid 51773) cannot write there)
+    working_dir: /home/irisowner
     environment:
       - ISC_CPF_MERGE_FILE=/home/irisowner/dev/merge.cpf
       - LLM_PROFILE=${LLM_PROFILE:-openai}

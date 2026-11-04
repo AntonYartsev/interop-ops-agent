@@ -124,6 +124,12 @@ else
   chmod 600 .env
 fi
 
+# On Linux the bind-mounted repo belongs to the host user; the file service runs as irisowner (uid 51773)
+# and must read, delete and archive files here. Docker Desktop (Mac) maps ownership, so it needs nothing.
+if [ "$(uname -s)" = "Linux" ]; then
+  chmod a+rwx cases/in cases/archive
+fi
+
 # --- live_env_check (begin) ---
 # Warn when IOA_LIVE in .env differs from the running container. Compose puts IOA_LIVE into the container
 # environment at creation, and that wins over the mounted .env, so an edited .env needs a recreate.
