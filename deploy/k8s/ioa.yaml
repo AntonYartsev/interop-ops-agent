@@ -1,5 +1,5 @@
-# Online demo on k3s: one IRIS pod on node-ru, only /demo/ is public (Traefik + cert-manager).
-# LLM traffic leaves through a squid proxy on node-us: OpenRouter answers 403 to the RU node IP.
+# Online demo on k3s: one IRIS pod on node-bg, only /demo/ is public (Traefik on node-ru + cert-manager).
+# node-bg (AMD EPYC 7K62, AVX2) reaches openrouter.ai directly: no proxy.
 # Secret ioa-env is created from the repo .env (see README.md), it is not in this file.
 apiVersion: v1
 kind: Namespace
@@ -33,9 +33,9 @@ spec:
     metadata:
       labels: {app: iris}
     spec:
-      # node-ru: IRIS 2026.3 needs AVX2, the node-us CPU (Xeon E5-2697 v2) has none ("Unsupported CPU").
+      # IRIS 2026.3 needs AVX2: node-us (Xeon E5-2697 v2) has none. node-bg has AVX2 and a non-RU IP for OpenRouter.
       nodeSelector:
-        kubernetes.io/hostname: node-ru
+        kubernetes.io/hostname: node-bg
       containers:
         - name: iris
           image: ioa-k8s:1
@@ -54,8 +54,6 @@ spec:
             - {name: LLM_MODEL, value: openai/gpt-6-luna}
             - {name: LLM_PRICE_IN_PER_M, value: "0.10"}
             - {name: LLM_PRICE_OUT_PER_M, value: "0.50"}
-            - {name: HTTPS_PROXY, value: "http://llm-proxy.ioa.svc.cluster.local:3128"}
-            - {name: NO_PROXY, value: "localhost,127.0.0.1"}
             - {name: IOA_DAILY_RESET, value: "1"}
           ports:
             - {name: http, containerPort: 52773}
@@ -72,41 +70,6 @@ spec:
       volumes:
         - name: cpf
           configMap: {name: ioa-cpf}
----
-# CONNECT proxy for LLM calls, US egress. ClusterIP only; default squid.conf allows 10.0.0.0/8 to SSL ports.
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: llm-proxy
-  namespace: ioa
-spec:
-  replicas: 1
-  selector:
-    matchLabels: {app: llm-proxy}
-  template:
-    metadata:
-      labels: {app: llm-proxy}
-    spec:
-      nodeSelector:
-        kubernetes.io/hostname: node-us
-      containers:
-        - name: squid
-          image: ubuntu/squid:6.6-24.04_edge
-          ports:
-            - {name: proxy, containerPort: 3128}
-          resources:
-            requests: {memory: 64Mi, cpu: 20m}
-            limits: {memory: 256Mi}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: llm-proxy
-  namespace: ioa
-spec:
-  selector: {app: llm-proxy}
-  ports:
-    - {name: proxy, port: 3128, targetPort: proxy}
 ---
 apiVersion: v1
 kind: Service

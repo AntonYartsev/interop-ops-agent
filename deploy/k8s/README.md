@@ -1,19 +1,20 @@
-# Online demo on k3s (node-ru): https://ioa.antonyartsev.com/demo/
+# Online demo on k3s (pod on node-bg): https://ioa.antonyartsev.com/demo/
 
 ```
 Internet -> node-ru:443 Traefik (cert-manager, letsencrypt-prod)
-         -> /demo/* -> Service iris:52773 -> Pod iris on node-ru
+         -> /demo/* -> Service iris:52773 -> Pod iris on node-bg (flannel)
          -> any other path -> 302 to /demo/
-Pod iris --HTTPS_PROXY--> Service llm-proxy (squid on node-us) -> openrouter.ai
+Pod iris -> openrouter.ai (direct, node-bg IP)
 ```
 
 Why this layout:
-- IRIS 2026.3 needs AVX2. node-us (Xeon E5-2697 v2) has none: `[FATAL] Unsupported CPU`. node-ru has it.
-- openrouter.ai answers 403 to the node-ru IP, so LLM calls leave through squid on node-us (US IP).
+- IRIS 2026.3 needs AVX2. node-us (Xeon E5-2697 v2) has none: `[FATAL] Unsupported CPU`. node-bg (AMD EPYC 7K62) has it.
+- openrouter.ai answers 403 to the node-ru IP. From node-bg it answers 200, so no proxy.
+- node-bg: 2 vCPU, 7.8 GB RAM, 58 GB disk. node-ru (30 GB disk) keeps only Traefik and the DNS A record.
 - LIVE: OpenRouter `openai/gpt-6-luna` ($0.10 / $0.50 per 1M tokens), capped by `IOA_MAX_USD` (0.50/day, reset daily).
 
-No registry: the image is built on the workstation and imported into k3s containerd on node-ru.
-Commands run from the repo root. `agent003` is the ssh alias of node-ru.
+No registry: the image is built on the workstation and imported into k3s containerd on node-bg.
+Commands run from the repo root. `agent001` is the ssh alias of node-bg.
 
 1. amd64 IRIS base (the archive is `irishealth-community-2026.3.0AI.154.0-docker.tar.gz`). `docker load` takes the
    same name as the arm64 image, so retag it and point the original name back at arm64:
@@ -28,12 +29,10 @@ Commands run from the repo root. `agent003` is the ssh alias of node-ru.
    docker build --platform linux/amd64 --build-arg IMAGE=irishealth-aihub-amd64:2026.3.0AI.154.0 -t interop-ops-agent-iris:amd64 .
    docker build --platform linux/amd64 -f deploy/k8s/Dockerfile -t ioa-k8s:1 .
    ```
-3. Import into k3s on node-ru (~30 min upload), then drop the uncompressed layer blob: containerd keeps it next to the
-   unpacked snapshot, ~6 GB extra, and node-ru (30 GB disk) goes into DiskPressure:
+3. Import into k3s on node-bg (~30 min upload). node-bg has disk for the layer blob, keep it: without it
+   `ctr images export` fails ("content digest ... not found"), and the image cannot move to another node.
    ```
-   docker save ioa-k8s:1 | gzip -1 | ssh agent003 'gunzip | sudo k3s ctr images import -'
-   ssh agent003 'sudo k3s ctr content ls | sort -k2 -h | tail -1'   # the ~6 GB blob
-   ssh agent003 'sudo k3s ctr content rm sha256:<that digest>'
+   docker save ioa-k8s:1 | gzip -1 | ssh agent001 'gunzip | sudo k3s ctr images import -'
    ```
 4. Secret from the local `.env` (same as compose `env_file`; values are not printed). The Deployment `env` overrides
    profile, model, prices, LIVE and the proxy:
@@ -45,6 +44,5 @@ Commands run from the repo root. `agent003` is the ssh alias of node-ru.
 5. DNS: A record `ioa.antonyartsev.com` -> 82.202.143.93 (Timeweb).
 
 New code: bump the tag (`ioa-k8s:2`), repeat 2-3, then `kubectl -n ioa set image deploy/iris iris=ioa-k8s:2`.
-Delete the old image first (`sudo k3s ctr images rm docker.io/library/ioa-k8s:1`): two copies do not fit on node-ru.
 State lives in the container layer: a pod restart resets the demo.
 Check: `curl -s https://ioa.antonyartsev.com/demo/api/status` (mode, model, budget).
