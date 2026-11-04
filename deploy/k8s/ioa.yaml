@@ -33,7 +33,7 @@ spec:
     metadata:
       labels: {app: iris}
     spec:
-      # IRIS 2026.3 needs AVX2: node-us (Xeon E5-2697 v2) has none. node-bg has AVX2 and a non-RU IP for OpenRouter.
+      # IRIS 2026.3 needs AVX2 (109 not checked on node-us): node-us (Xeon E5-2697 v2) has none. node-bg has AVX2 and a non-RU IP for OpenRouter.
       nodeSelector:
         kubernetes.io/hostname: node-bg
       # Public resolvers: LLM calls do not depend on CoreDNS (node-ru). The pod needs no cluster service names.
@@ -42,7 +42,7 @@ spec:
         nameservers: [1.1.1.1, 8.8.8.8]
       containers:
         - name: iris
-          image: ioa-k8s:1
+          image: ioa-k8s:2
           imagePullPolicy: Never
           # Same setup step as run.sh: compile, env -> ^IOA.Config, reviewer, /demo web app, daily reset, start.
           args:

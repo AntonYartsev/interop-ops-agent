@@ -8,7 +8,7 @@ Pod iris -> openrouter.ai (direct, node-bg IP; DNS 1.1.1.1 / 8.8.8.8, not CoreDN
 ```
 
 Why this layout:
-- IRIS 2026.3 needs AVX2. node-us (Xeon E5-2697 v2) has none: `[FATAL] Unsupported CPU`. node-bg (AMD EPYC 7K62) has it.
+- IRIS 2026.3 needs AVX2 (build 109 not checked on node-us). node-us (Xeon E5-2697 v2) has none: `[FATAL] Unsupported CPU`. node-bg (AMD EPYC 7K62) has it.
 - openrouter.ai answers 403 to the node-ru IP. From node-bg it answers 200, so no proxy.
 - node-bg: 2 vCPU, 7.8 GB RAM, 58 GB disk. svclb runs there (label `svccontroller.k3s.cattle.io/enablelb=true`).
 - Traefik is shared by the cluster and stays where k3s puts it (node-us now). It is not pinned to node-bg:
