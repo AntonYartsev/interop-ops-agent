@@ -1,16 +1,19 @@
 # Online demo on k3s (pod on node-bg): https://ioa.antonyartsev.com/demo/
 
 ```
-Internet -> node-ru:443 Traefik (cert-manager, letsencrypt-prod)
+Internet -> node-bg:443 svclb -> Traefik pod (node-us; cert-manager, letsencrypt-prod)
          -> /demo/* -> Service iris:52773 -> Pod iris on node-bg (flannel)
          -> any other path -> 302 to /demo/
-Pod iris -> openrouter.ai (direct, node-bg IP)
+Pod iris -> openrouter.ai (direct, node-bg IP; DNS 1.1.1.1 / 8.8.8.8, not CoreDNS)
 ```
 
 Why this layout:
 - IRIS 2026.3 needs AVX2. node-us (Xeon E5-2697 v2) has none: `[FATAL] Unsupported CPU`. node-bg (AMD EPYC 7K62) has it.
 - openrouter.ai answers 403 to the node-ru IP. From node-bg it answers 200, so no proxy.
-- node-bg: 2 vCPU, 7.8 GB RAM, 58 GB disk. node-ru (30 GB disk) keeps only Traefik and the DNS A record.
+- node-bg: 2 vCPU, 7.8 GB RAM, 58 GB disk. svclb runs there (label `svccontroller.k3s.cattle.io/enablelb=true`).
+- Traefik is shared by the cluster and stays where k3s puts it (node-us now). It is not pinned to node-bg:
+  node-bg may be temporary, and a pinned Traefik would go `Pending` and take all sites down.
+  So requests go node-bg -> node-us -> node-bg. If node-bg goes away: point DNS back to node-ru, move the pod.
 - LIVE: OpenRouter `openai/gpt-6-luna` ($0.10 / $0.50 per 1M tokens), capped by `IOA_MAX_USD` (0.50/day, reset daily).
 
 No registry: the image is built on the workstation and imported into k3s containerd on node-bg.
@@ -41,7 +44,8 @@ Commands run from the repo root. `agent001` is the ssh alias of node-bg.
    kubectl -n ioa create secret generic ioa-env --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
    kubectl -n ioa rollout restart deploy/iris
    ```
-5. DNS: A record `ioa.antonyartsev.com` -> 82.202.143.93 (Timeweb).
+5. svclb on node-bg: `kubectl label node node-bg svccontroller.k3s.cattle.io/enablelb=true`.
+6. DNS: A record `ioa.antonyartsev.com` -> 2.58.32.51 (node-bg, Timeweb).
 
 New code: bump the tag (`ioa-k8s:2`), repeat 2-3, then `kubectl -n ioa set image deploy/iris iris=ioa-k8s:2`.
 State lives in the container layer: a pod restart resets the demo.
