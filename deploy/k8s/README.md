@@ -19,17 +19,17 @@ Why this layout:
 No registry: the image is built on the workstation and imported into k3s containerd on node-bg.
 Commands run from the repo root. `agent001` is the ssh alias of node-bg.
 
-1. amd64 IRIS base (the archive is `irishealth-community-2026.3.0AI.154.0-docker.tar.gz`). `docker load` takes the
+1. amd64 IRIS base (the archive is `irishealth-community-2027.1.0AI.109.0-docker.tar.gz`). `docker load` takes the
    same name as the arm64 image, so retag it and point the original name back at arm64:
    ```
-   ARM=$(docker image inspect -f '{{.Id}}' irishealth-aihub:2026.3.0AI.154.0)
-   docker image load -i ../irishealth-community-2026.3.0AI.154.0-docker.tar.gz
-   ISC=docker.iscinternal.com/docker-intersystems/intersystems/irishealth-community:2026.3.0AI.154.0
-   docker tag $ISC irishealth-aihub-amd64:2026.3.0AI.154.0 && docker tag $ARM $ISC
+   ARM=$(docker image inspect -f '{{.Id}}' irishealth-aihub:2027.1.0AI.109.0)
+   docker image load -i ../irishealth-community-2027.1.0AI.109.0-docker.tar.gz
+   ISC=docker.iscinternal.com/docker-intersystems/intersystems/irishealth-community:2027.1.0AI.109.0
+   docker tag $ISC irishealth-aihub-amd64:2027.1.0AI.109.0 && docker tag $ARM $ISC
    ```
 2. Build (amd64 under emulation, then the flattened k8s image). The image does not run on the Mac (Rosetta has no AVX2):
    ```
-   docker build --platform linux/amd64 --build-arg IMAGE=irishealth-aihub-amd64:2026.3.0AI.154.0 -t interop-ops-agent-iris:amd64 .
+   docker build --platform linux/amd64 --build-arg IMAGE=irishealth-aihub-amd64:2027.1.0AI.109.0 -t interop-ops-agent-iris:amd64 .
    docker build --platform linux/amd64 -f deploy/k8s/Dockerfile -t ioa-k8s:1 .
    ```
 3. Import into k3s on node-bg (~30 min upload). node-bg has disk for the layer blob, keep it: without it

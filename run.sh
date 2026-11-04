@@ -64,17 +64,17 @@ else
   echo "Demo mode: docker compose ${COMPOSE_FILES[*]} (iris ports not published, Caddy on 80/443)"
 fi
 
-# Default archive by host architecture (both are published on the EAP portal for build 154); IRIS_IMAGE_TAR overrides.
+# Default archive by host architecture (both are published on the EAP portal for build 109); IRIS_IMAGE_TAR overrides.
 case "$(uname -m)" in
-  arm64|aarch64) DEFAULT_TAR="../irishealth_arm64-community-2026.3.0AI.154.0-docker.tar.gz" ;;
-  *)             DEFAULT_TAR="../irishealth-community-2026.3.0AI.154.0-docker.tar.gz" ;;
+  arm64|aarch64) DEFAULT_TAR="../irishealth_arm64-community-2027.1.0AI.109.0-docker.tar.gz" ;;
+  *)             DEFAULT_TAR="../irishealth-community-2027.1.0AI.109.0-docker.tar.gz" ;;
 esac
 TARBALL="${IRIS_IMAGE_TAR:-$DEFAULT_TAR}"
 # Name the ARM64 archive loads as (seen here). After a load, the name from the "Loaded image:" line of
 # docker image load is used instead, so another archive (x64) works without knowing its name in advance.
-ORIG_IMAGE="docker.iscinternal.com/docker-intersystems/intersystems/irishealth-community:2026.3.0AI.154.0"
+ORIG_IMAGE="docker.iscinternal.com/docker-intersystems/intersystems/irishealth-community:2027.1.0AI.109.0"
 SRC_IMAGE="$ORIG_IMAGE"
-LOCAL_TAG="irishealth-aihub:2026.3.0AI.154.0"
+LOCAL_TAG="irishealth-aihub:2027.1.0AI.109.0"
 PROJECT_NAME="interop-ops-agent"
 CONTAINER_NAME="interop-ops-agent-iris-1"
 

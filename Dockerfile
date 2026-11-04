@@ -1,4 +1,4 @@
-ARG IMAGE=irishealth-aihub:2026.3.0AI.154.0
+ARG IMAGE=irishealth-aihub:2027.1.0AI.109.0
 FROM ${IMAGE} AS iris
 
 # .NET 8 build of the PEX operation Hl7Check (NHapi), against the IRIS .NET SDK of this image

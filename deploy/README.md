@@ -31,10 +31,10 @@ Check `docker compose version`: the overlay needs v2.24.4 or newer.
 
 ## c) IRIS image
 ```
-scp irishealth_arm64-community-2026.3.0AI.154.0-docker.tar.gz deploy/load-image.sh <user>@<server>:~/
+scp irishealth_arm64-community-2027.1.0AI.109.0-docker.tar.gz deploy/load-image.sh <user>@<server>:~/
 ssh <user>@<server> './load-image.sh'
 ```
-The script runs `docker image load -i` and retags to `irishealth-aihub:2026.3.0AI.154.0`. This is the `ARG IMAGE`
+The script runs `docker image load -i` and retags to `irishealth-aihub:2027.1.0AI.109.0`. This is the `ARG IMAGE`
 default in `Dockerfile` and the `LOCAL_TAG` logic of `run.sh:22-50`.
 
 ## d) Project code and build
@@ -109,7 +109,7 @@ root on the server.
 - DESTRUCTIVE, full removal (deletes volumes incl. Caddy certificates, images, firewall and swap changes):
   ```
   $DC down -v
-  docker image rm interop-ops-agent-iris irishealth-aihub:2026.3.0AI.154.0 caddy:2
+  docker image rm interop-ops-agent-iris irishealth-aihub:2027.1.0AI.109.0 caddy:2
   sudo ufw delete allow 80/tcp ; sudo ufw delete allow 443/tcp
   sudo swapoff /swapfile && sudo rm /swapfile && sudo sed -i '\#^/swapfile #d' /etc/fstab
   ```
