@@ -34,7 +34,7 @@ XData HTML [ MimeType = text/html ]
     <div id="steps" class="steps"></div>
     <table id="trace" class="hidden"><thead><tr><th>Header</th><th>Time (UTC)</th><th>From</th><th>To</th><th>Body</th><th>Type</th><th>Status</th></tr></thead><tbody></tbody></table>
   </section>
-  <section class="card">
+  <section class="card wide">
     <h2>Workflow queue <span class="muted small" id="taskcount"></span></h2>
     <table id="tasks"><thead><tr><th>Task</th><th>Subject</th><th>Status</th><th>Action</th><th>Role</th><th>Session</th><th>Review</th></tr></thead><tbody></tbody></table>
   </section>
@@ -84,6 +84,7 @@ input { font:inherit; padding:3px 6px; border:1px solid var(--line); border-radi
 .arrow { color:var(--mute); }
 button.rej { background:var(--bad); border-color:var(--bad); }
 .runbox button, #tasks button { margin:4px 6px 0 0; }
+#tasks pre { white-space:pre-wrap; max-width:110ch; margin:4px 0; font-size:12px; }
 .runbox { margin-top:10px; padding:8px 10px; border-left:4px solid var(--acc); background:#f0f4ff; border-radius:4px; }
 .kb li { margin-bottom:8px; } .kb .score { color:var(--mute); font-size:12px; }
 #trace { display:block; max-height:330px; overflow:auto; }
@@ -122,6 +123,7 @@ XData JS [ MimeType = application/javascript ]
       if (s._code !== 200) { box.appendChild(el("span", { text: "status error " + s._code })); return; }
       var b = s.budget || {}, used = b.callsCap ? Math.min(100, Math.round(100 * b.calls / b.callsCap)) : 0;
       box.appendChild(el("span", { cls: "pill " + s.kind, text: "mode " + s.kind }));
+      if (s.kind === "LIVE") box.appendChild(el("span", { cls: "pill", text: "LIVE model: results can differ from the README and the video (REPLAY)" }));
       box.appendChild(el("span", { cls: "pill", text: "profile " + s.profile + " / " + s.model }));
       box.appendChild(el("span", { cls: "pill", text: "key " + s.key }));
       var bar = el("span", { cls: "bar" }); bar.appendChild(el("i", { style: "width:" + (100 - used) + "%" }));
@@ -144,7 +146,7 @@ XData JS [ MimeType = application/javascript ]
       (j.cases || []).forEach(function (c) {
         var d = c.latest || {}, e = c.expected || {};
         var run = el("td"); run.appendChild(el("button", { type: "button", "data-run": c.id, text: "Run" }));
-        tb.appendChild(el("tr", null, [td(c.id), td(c.title, "muted"), td((e.action || "") + " " + tgt(e.target)),
+        tb.appendChild(el("tr", null, [td(c.id), td((c.set === "pair" ? "specimen pair: " : "") + c.title, "muted"), td((e.action || "") + " " + tgt(e.target)),
           td(d.action ? d.action + " " + tgt(d.target) : "-"), td(d.finalStatus || "", statusCls(d.finalStatus)), td(d.source || ""),
           td(d.llmCalls != null ? d.llmCalls : ""), sessBtn(d.sessionId), run]));
       });
@@ -186,7 +188,9 @@ XData JS [ MimeType = application/javascript ]
       (j.tasks || []).forEach(function (t) {
         var rv = el("td");
         if (t.canDecide) reviewButtons(t.id).forEach(function (b) { rv.appendChild(b); });
-        tb.appendChild(el("tr", null, [td(t.id), td(t.subject), td(t.status, t.isComplete ? "ok" : "warn"), td(t.action), td(t.role), sessBtn(t.sessionId), rv]));
+        var subj = el("td", null, [el("div", { text: String(t.subject || "") })]);
+        if (t.message) { var det = el("details", null, [el("summary", { text: "what the gate checked / what the proposer says" }), el("pre", { cls: "small", text: String(t.message) })]); subj.appendChild(det); }
+        tb.appendChild(el("tr", null, [td(t.id), subj, td(t.status, t.isComplete ? "ok" : "warn"), td(t.action), td(t.role), sessBtn(t.sessionId), rv]));
       });
     });
   }

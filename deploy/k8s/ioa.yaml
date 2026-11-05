@@ -41,7 +41,7 @@ spec:
         nameservers: [1.1.1.1, 8.8.8.8]
       containers:
         - name: iris
-          image: ioa-k8s:3
+          image: ioa-k8s:5
           imagePullPolicy: Never
           # Same setup step as run.sh: compile, env -> ^IOA.Config, reviewer, /demo web app, daily reset, start.
           args:

@@ -18,6 +18,7 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
     Set tMappedUnknownCodes = {}
     Set tConvertedCodes = {}
     Set tChangedSomething = 0
+    Set tChecks = ""
 
     Set cObj = pPatch.%Get("change")
     If $ISOBJECT(cObj) {
@@ -49,6 +50,10 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
                 If ..OtherUnits(tDStat.%Get("units"), tExpUnit) '= "" { Do tReasons.%Push("unit_mismatch_on_mapped_code:" _ tFrom _ "!=" _ tExpUnit) Quit }
                 Set tHMed = ..HistMedian(tHist, tTo)
                 Set tDMed = +tDStat.%Get("median")
+                Set tChecks = {"code": (tFrom), "description": (tDStat.%Get("description")), "results": (tDStat.%Get("count")), "messages": (##class(InteropOps.Rules.Data).BatchCount(pCaseId)),
+                    "history_results": (..HistCount(tHist, tFrom)), "target_local": (tTo), "target_loinc": (tLookup.%Get(tTo).%Get("canonical_code")), "target_name": (tLookup.%Get(tTo).%Get("canonical_name")),
+                    "units": (tDStat.%Get("units")), "expected_unit": (tExpUnit), "batch_median": (tDMed), "history_median": (tHMed), "median_limit": (..#MEDIANTOLERANCE), "target_absent_in_batch": 1,
+                    "sender_specimen": (..Specimen(tDStat.%Get("description"))), "target_specimen": (..Specimen(tLookup.%Get(tTo).%Get("canonical_name")))}
                 If (tHMed > 0) && (($ZABS(tDMed - tHMed) / tHMed) > ..#MEDIANTOLERANCE) { Do tReasons.%Push("distribution_mismatch_on_mapped_code:" _ tFrom _ "->" _ tTo) Quit }
                 Do tMappedUnknownCodes.%Set(tFrom, tTo)
                 Set tChangedSomething = 1
@@ -69,6 +74,9 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
                 If '$ISOBJECT(tDStat) { Do tReasons.%Push("no_op_convert_unit:" _ tCode) Quit }
                 Set tHMed = ..HistMedian(tHist, tCode)
                 Set tDMed = +tDStat.%Get("median") * tFactor
+                Set tChecks = {"code": (tCode), "results": (tDStat.%Get("count")), "messages": (##class(InteropOps.Rules.Data).BatchCount(pCaseId)), "history_results": (..HistCount(tHist, tCode)),
+                    "units": (tDStat.%Get("units")), "from_unit": (tFromU), "expected_unit": (tLookup.%Get(tCode).%Get("expected_unit")), "factor": (tFactor),
+                    "batch_median_before": (+tDStat.%Get("median")), "batch_median_after": (tDMed), "history_median": (tHMed), "median_limit": (..#MEDIANTOLERANCE)}
                 If (tHMed > 0) && (($ZABS(tDMed - tHMed) / tHMed) > ..#MEDIANTOLERANCE) { Do tReasons.%Push("distribution_mismatch_after_convert_unit:" _ tCode) Quit }
                 Do tConvertedCodes.%Set(tCode, tFactor)
                 Set tChangedSomething = 1
@@ -112,7 +120,8 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
         "history_broken": (tHistoryBroken),
         "drift_valid": (tPassed),
         "distribution_match": (tPassed),
-        "gate_reasons": (tReasons)
+        "gate_reasons": (tReasons),
+        "checks": ($SELECT($ISOBJECT(tChecks): tChecks, 1: {}))
     }
 }
 
@@ -127,6 +136,28 @@ ClassMethod OtherUnits(pUnits As %DynamicObject, pExpected As %String, pAlso As 
         Set tOut = tOut _ $SELECT(tOut = "": "", 1: ",") _ tU
     }
     Return tOut
+}
+
+/// Specimen class named in a test text: serum/plasma, urine, csf, blood, or "" (none named). Only a warning on the review
+/// task, never a gate reason: added after the specimen pair run of 2026-11-05 (C18/C19), see README "How we measured".
+ClassMethod Specimen(pText As %String) As %String
+{
+    Set t = $ZCONVERT(pText, "L")
+    Quit:(t["serum")||(t["plasma") "serum/plasma"
+    Quit:t["urine" "urine"
+    Quit:(t["csf")||(t["cerebrospinal") "csf"
+    Quit:(t["blood")||(t["arterial")||(t["venous")||(t["capillary") "blood"
+    Quit ""
+}
+
+/// Results of a code in the history summary (0 for a code that never occurs there)
+ClassMethod HistCount(pHist As %DynamicObject, pCode As %String) As %Integer
+{
+    Set tCS = pHist.%Get("code_stats")
+    Quit:'$ISOBJECT(tCS) 0
+    Set tS = tCS.%Get(pCode)
+    Quit:'$ISOBJECT(tS) 0
+    Quit +tS.%Get("count")
 }
 
 /// Median of a code in the history summary; 0 when the code has no history (new local codes such as SOD/HB)

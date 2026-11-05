@@ -3,73 +3,24 @@
   "case_id":"C11",
   "match":{
     "msh10":"C11-MSG001",
-    "prompt_sha256":"41a3f88cb2162ca9d5a6f5148d041a362bcd8bffb5a2dd176b95162c1bb2183a"
+    "prompt_sha256":"737859bf35be7e0063f0f5d7674111d236b5eb2e5118c268cfa9185d25b087ef"
   },
   "recorded":{
-    "profile":"openai",
-    "model":"gpt-5.4-mini",
+    "profile":"rules",
+    "model":"none",
     "build":"2027.1.0AI.109",
-    "at":"2026-11-05T10:06:10Z",
-    "source":"live"
+    "at":"2026-11-05T13:04:04Z",
+    "source":"rules"
   },
   "turns":[
-    {
-      "role":"assistant",
-      "tool_calls":[
-        {
-          "name":"CheckCriticalValues",
-          "arguments":{
-          }
-        },
-        {
-          "name":"GetValidationEvidence",
-          "arguments":{
-          }
-        },
-        {
-          "name":"SearchLookup",
-          "arguments":{
-            "query":"K"
-          }
-        },
-        {
-          "name":"SearchLookup",
-          "arguments":{
-            "query":"BUN"
-          }
-        }
-      ],
-      "tool_results":[
-        {
-          "name":"CheckCriticalValues",
-          "content":"{\"case_id\":\"C11\",\"critical\":[{\"code\":\"K\",\"flag\":\"HH\",\"index\":14,\"limit\":\"above critical high 6.2\",\"msh10\":\"C11-MSG015\",\"unit\":\"mmol/L\",\"value\":\"6.8\"}],\"critical_count\":1,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":90,\"results_not_checked\":60,\"total_messages\":30}"
-        },
-        {
-          "name":"GetValidationEvidence",
-          "content":"{\"case_id\":\"C11\",\"hl7check\":{\"agree\":0,\"dotnet_only\":1,\"engine\":\"NHapi 3.2.3.0 / v2.5.1 model; IRIS valspec dm-zrny-x\",\"errors\":0,\"findings\":[{\"code\":\"OBX8_CRITICAL\",\"count\":1,\"examples\":[\"C11-MSG015\"],\"message\":\"K=6.8 mmol/L flagged 'HH' (critical/panic): needs critical-result notification\",\"path\":\"OBX[3]-8\",\"rule\":\"obx-rule\",\"severity\":\"warning\",\"source\":\"dotnet\"}],\"iris_invalid\":0,\"iris_only\":0,\"messages\":30,\"messages_with_errors\":0,\"status\":\"ok\",\"warnings\":1},\"kb\":{\"embedder\":\"local-hash-384-v1\",\"results\":[{\"score\":0.2062,\"slug\":\"kb-critical-potassium\",\"title\":\"Critical potassium result\"},{\"score\":0.1874,\"slug\":\"kb-obx-set-id\",\"title\":\"Repeated or out of order OBX set IDs\"},{\"score\":0.1398,\"slug\":\"kb-ack-error\",\"title\":\"Downstream ACK with AE or AR\"}],\"status\":\"ok\"},\"ucum\":{\"findings\":[{\"basis\":\"prefix\",\"code\":\"GLU\",\"count\":30,\"examples\":[\"C11-MSG001\",\"C11-MSG002\",\"C11-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[1]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"NA\",\"count\":30,\"examples\":[\"C11-MSG001\",\"C11-MSG002\",\"C11-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[2]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"K\",\"count\":30,\"examples\":[\"C11-MSG001\",\"C11-MSG002\",\"C11-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"flags\":{\"HH\":1},\"obx\":\"OBX[3]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"CREAT\",\"count\":30,\"examples\":[\"C11-MSG001\",\"C11-MSG002\",\"C11-MSG003\"],\"expected_unit\":\"umol/L\",\"factor\":1,\"obx\":\"OBX[4]\",\"severity\":\"info\",\"unit\":\"umol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"BUN\",\"count\":30,\"examples\":[\"C11-MSG001\",\"C11-MSG002\",\"C11-MSG003\"],\"expected_unit\":\"mg/dL\",\"factor\":1,\"flags\":{\"L\":1},\"obx\":\"OBX[5]\",\"severity\":\"info\",\"unit\":\"mg/dL\",\"verdict\":\"same_unit\"}],\"status\":\"ok\",\"summary\":\"UCUM: 150 OBX in 30 messages; 150 unit OK vs lookup, 0 need attention\"}}"
-        },
-        {
-          "name":"SearchLookup",
-          "content":"{\"matches\":[{\"canonical_name\":\"Potassium [Moles/volume] in Serum or Plasma\",\"expected_unit\":\"mmol/L\",\"history_median\":4.23,\"history_units\":{\"mmol/L\":100},\"local_code\":\"K\",\"loinc\":\"2823-3\",\"panel\":\"BMP\",\"ref_range\":\"3.5-5.1\",\"short_name\":\"Potassium\"},{\"canonical_name\":\"Leukocytes [#/volume] in Blood\",\"expected_unit\":\"10*3/uL\",\"history_median\":6.95,\"history_units\":{\"10*3/uL\":100},\"local_code\":\"WBC\",\"loinc\":\"6690-2\",\"panel\":\"CBC\",\"ref_range\":\"4.5-11.0\",\"short_name\":\"White Blood Cells\"}],\"query\":\"K\"}"
-        },
-        {
-          "name":"SearchLookup",
-          "content":"{\"matches\":[{\"canonical_name\":\"Urea nitrogen [Mass/volume] in Serum or Plasma\",\"expected_unit\":\"mg/dL\",\"history_median\":14,\"history_units\":{\"mg/dL\":100},\"local_code\":\"BUN\",\"loinc\":\"3094-0\",\"panel\":\"BMP\",\"ref_range\":\"7-20\",\"short_name\":\"Urea nitrogen\"}],\"query\":\"BUN\"}"
-        }
-      ]
-    },
-    {
-      "role":"assistant",
-      "content":"{\"action\":\"pass\",\"target\":null,\"reason\":\"No interface change is needed: all units match the lookup, there are no HL7 structural errors, and the only notable issue is one critical potassium result that is a clinical finding, not an interface problem.\",\"evidence\":[\"30/30 messages passed hl7 structure validation with 0 errors\",\"UCUM check found 150/150 OBX units OK vs lookup; K is mmol/L and BUN is mg/dL\",\"CheckCriticalValues found 1 critical result: K 6.8 mmol/L with HH in MSH-10 C11-MSG015 (critical high limit 6.2)\",\"Lookup confirms K maps to LOINC 2823-3 with expected unit mmol/L and BUN maps to LOINC 3094-0 with expected unit mg/dL\"],\"field_drift\":null}"
-    }
   ],
   "expected":{
     "decision":"pass",
-    "rationale_short":"No interface change is needed: all units match the lookup, there are no HL7 structural errors, and the only notable issue is one critical potassium result that is a clinical finding, not an interface problem."
+    "rationale_short":"Rule A0: no anomaly in the batch"
   },
   "usage":{
-    "prompt_tokens":5081,
-    "completion_tokens":254
+    "prompt_tokens":0,
+    "completion_tokens":0
   },
-  "llm_calls":2
+  "llm_calls":0
 }

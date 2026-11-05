@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "blind": true,
+  "note": "SYNTHETIC specimen pair cases from scripts/gen_pair_cases.py (seed 20261105). Expected answers and the baseline result were committed before the first LIVE run; no cassettes. Pair: C01 (main set) with C18, C19 with C20.",
+  "criteria": "same as cases/expected.json",
+  "cases": {
+    "C18": {
+      "action": "escalate",
+      "target": null,
+      "why": "whole-blood sodium (LOINC 2947-0) is not serum/plasma sodium (2951-2); the lookup has no whole-blood code",
+      "file": "C18-sodium-whole-blood.hl7"
+    },
+    "C19": {
+      "action": "escalate",
+      "target": null,
+      "why": "whole-blood potassium (LOINC 6298-4) is not serum/plasma potassium (2823-3); the lookup has no whole-blood code",
+      "file": "C19-potassium-whole-blood.hl7"
+    },
+    "C20": {
+      "action": "patch_mapping",
+      "target": {
+        "code": "KX",
+        "loinc": "2823-3"
+      },
+      "why": "serum/plasma potassium, same unit and values as K, K absent from the panel",
+      "file": "C20-potassium-serum.hl7"
+    }
+  }
+}

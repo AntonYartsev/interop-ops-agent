@@ -1,0 +1,6 @@
+# sha256  file  messages
+6ab496baf41f09bc47292d261bec2098660ccae9c2262a875b17a439e1d2cf08  C18-sodium-whole-blood.hl7  30
+d0e77e789521717432029cb60891cf4d290bffc0e35deb045b8ef045b3eec304  C19-potassium-whole-blood.hl7  30
+8852c61edd33a38800136f456ab3e1eab8540c9558d13d4aba9b59af89b69241  C20-potassium-serum.hl7  30
+f4e36f7cc570a8c6a0c62bf994d9d08b075ff927b9b042faada800a577ca939c  expected.json
+e05d7efd495ab32923ba15c5f7deda55658f55fd33f24857b53931eb1a6adf55  BASELINE.txt  (scripts/baseline_rules.py 4f1c229570c1)

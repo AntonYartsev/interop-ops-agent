@@ -1,0 +1,5 @@
+C18 rule=B1  proposed=patch_mapping final=patch_mapping gold=escalate      WRONG SOD->2951-2 cands=['NA'] reasons=[]
+C19 rule=B1  proposed=patch_mapping final=patch_mapping gold=escalate      WRONG KX->2823-3 cands=['K'] reasons=[]
+C20 rule=B1  proposed=patch_mapping final=patch_mapping gold=patch_mapping OK KX->2823-3 cands=['K'] reasons=[]
+== cases/pair: 1/3
+

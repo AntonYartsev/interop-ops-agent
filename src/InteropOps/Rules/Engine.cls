@@ -1,4 +1,5 @@
 /// Rules, run on the summary of the received batch. In this order:
+/// 0. no anomaly in the ticket -> pass (the gate rejects pass if any unresolved reason remains)
 /// 1. an MSH-10 seen more than once AND all its copies byte-identical -> quarantine that MSH-10
 ///    (copies that differ, e.g. a correction resend, are not quarantined by rules; the gate would reject it)
 /// 2. exactly one anomaly in the ticket, and it is
@@ -30,6 +31,8 @@ ClassMethod Decide(pCaseId As %String, Output pTicket As %DynamicObject) As %Dyn
     }
 
     Set tAnoms = pTicket.anomalies
+    // 0. no anomaly after the DTL (e.g. the same change again after an approved fix): pass, the gate re-checks it
+    If tAnoms.%Size() = 0 Return {"action": "pass", "target": null, "reason": "Rule A0: no anomaly in the batch", "evidence": (tEvidence)}
     If tAnoms.%Size() = 1 {
         Set tA = tAnoms.%Get(0)
         If tA.category = "unmapped_code" {
@@ -58,7 +61,7 @@ ClassMethod Decide(pCaseId As %String, Output pTicket As %DynamicObject) As %Dyn
             Return {"action": "convert_unit", "target": {"code": (tA.code), "from_unit": (tA."drift_unit"), "to_unit": (tA."expected_unit"), "factor": (+tA."ucum_factor"), "operation": "multiply"}, "reason": "Rule A2c: UCUM table unit pair", "evidence": (tEvidence)}
         }
     }
-    Return {"action": "escalate", "target": null, "reason": ($SELECT(tAnoms.%Size() = 0: "Rule A3: no rule matched (no anomaly detected)", 1: "Rule A3: no rule matched")), "evidence": (tEvidence)}
+    Return {"action": "escalate", "target": null, "reason": "Rule A3: no rule matched", "evidence": (tEvidence)}
 }
 
 /// Ticket facts as evidence strings (category, field/code, counts)

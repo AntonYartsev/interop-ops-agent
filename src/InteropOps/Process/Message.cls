@@ -157,7 +157,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign name='Stage Review task' property="context.Stage" value='"workflow"' action="set" />
 <call name='Review task' target='IOA.Workflow' async='0' >
 <request type='EnsLib.Workflow.TaskRequest' >
-<assign property="callrequest" value='##class(InteropOps.Workflow.Operation).BuildTask(request.CaseId,context.DecisionJSON,context.GateSummary,process.%SessionId)' action="set" />
+<assign property="callrequest" value='##class(InteropOps.Workflow.Operation).BuildTask(request.CaseId,context.DecisionJSON,context.GateSummary,process.%SessionId,context.GateJSON,context.Source)' action="set" />
 </request>
 <response type='EnsLib.Workflow.TaskResponse' >
 <assign property="context.TaskId" value='callresponse.%Id()' action="set" />

@@ -5,6 +5,7 @@
 /// so it shows in the Visual Trace of the session. IOA.Reprocess is a leaf: it never reaches triage, the agent or a Decision row.
 /// If any message is still invalid after the patch, the patch is rolled back and the result has an error (the case ends escalated).
 /// If the stored batch is not the batch that was reviewed (BatchSHA differs), nothing is applied.
+/// If the lookup entry (or unit factor) got another value after the gate, nothing is applied. If reprocess fails with an error, the patch is rolled back.
 Class InteropOps.Lookup.Apply Extends Ens.BusinessOperation
 {
 
@@ -44,27 +45,43 @@ ClassMethod Run(pCaseId As %String, pDecision As %DynamicObject, pHost As Ens.Bu
     }
     Set tT = pDecision.target, tCode = $ZCONVERT(tT.code, "U"), tTable = ##class(InteropOps.Rules.Data).#LOOKUPTABLE
     If pDecision.action = "patch_mapping" {
-        Set tOld = $GET(^Ens.LookupTable(tTable, tCode))
-        $$$ThrowOnError(##class(Ens.Util.LookupTable).%UpdateValue(tTable, tCode, tT.loinc))
-        Set tApplied = tCode _ "->" _ tT.loinc
+        Set tOld = $GET(^Ens.LookupTable(tTable, tCode)), tNew = tT.loinc, tApplied = tCode _ "->" _ tNew
     } ElseIf pDecision.action = "convert_unit" {
-        Set tOld = $GET(^IOA.UnitFactor(tCode, tT."from_unit"))
-        Set tMult = ##class(InteropOps.Gate.Replay).Multiplier(tT)
-        Set ^IOA.UnitFactor(tCode, tT."from_unit") = tMult
-        Set tApplied = tCode _ " " _ tT."from_unit" _ " x " _ tMult
+        Set tOld = $GET(^IOA.UnitFactor(tCode, tT."from_unit")), tNew = ##class(InteropOps.Gate.Replay).Multiplier(tT)
+        Set tApplied = tCode _ " " _ tT."from_unit" _ " x " _ tNew
     } Else {
         Return {"applied": "", "error": ("nothing to apply for " _ pDecision.action)}
     }
-    Set tRe = ..Reprocess(pCaseId, pHost)
+    // the gate checked the patch against the lookup as it was then (no entry for the code): if another value was set
+    // while the task waited, the gate result is out of date, so apply nothing
+    If (tOld '= "") && (tOld '= tNew) {
+        Return {"applied": "", "error": ("lookup_changed: " _ tCode _ " is " _ tOld _ " now, not the state the gate checked, nothing applied")}
+    }
+    Do ..Set(pDecision.action, tTable, tCode, tT."from_unit", tNew)
+    Try {
+        Set tRe = ..Reprocess(pCaseId, pHost)
+    } Catch tEx {
+        // reprocess did not finish: the patch must not stay applied for a case that ends escalated
+        Do ..Set(pDecision.action, tTable, tCode, tT."from_unit", tOld)
+        Return {"applied": "", "rolled_back": (tApplied), "llm_calls": 0, "error": ("reprocess_error: " _ $EXTRACT(tEx.DisplayString(), 1, 300) _ ", patch rolled back")}
+    }
     If tRe.valid = tRe.total Return {"applied": (tApplied), "reprocess": (tRe), "llm_calls": 0}
     // not every message of the batch is valid after the patch: roll the patch back, the case ends escalated
-    If pDecision.action = "patch_mapping" {
-        If tOld = "" { $$$ThrowOnError(##class(Ens.Util.LookupTable).%RemoveValue(tTable, tCode)) } Else { $$$ThrowOnError(##class(Ens.Util.LookupTable).%UpdateValue(tTable, tCode, tOld)) }
-    } Else {
-        If tOld = "" { Kill ^IOA.UnitFactor(tCode, tT."from_unit") } Else { Set ^IOA.UnitFactor(tCode, tT."from_unit") = tOld }
-    }
+    Do ..Set(pDecision.action, tTable, tCode, tT."from_unit", tOld)
     Return {"applied": "", "rolled_back": (tApplied), "reprocess": (tRe), "llm_calls": 0,
         "error": ("reprocess_failed: " _ tRe.valid _ "/" _ tRe.total _ " messages valid after " _ tApplied _ ", patch rolled back")}
+}
+
+/// Write (pValue '= "") or remove (pValue = "") the lookup entry or the unit factor
+ClassMethod Set(pAction As %String, pTable As %String, pCode As %String, pFromUnit As %String, pValue As %String) [ Private ]
+{
+    If pAction = "patch_mapping" {
+        If pValue = "" { $$$ThrowOnError(##class(Ens.Util.LookupTable).%RemoveValue(pTable, pCode)) } Else { $$$ThrowOnError(##class(Ens.Util.LookupTable).%UpdateValue(pTable, pCode, pValue)) }
+    } ElseIf pValue = "" {
+        Kill ^IOA.UnitFactor(pCode, pFromUnit)
+    } Else {
+        Set ^IOA.UnitFactor(pCode, pFromUnit) = pValue
+    }
 }
 
 /// Resend each stored message through IOA.Reprocess (sync). Without a host (direct call) fall back to the plain DTL batch.
