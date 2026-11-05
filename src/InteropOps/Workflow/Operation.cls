@@ -63,7 +63,7 @@ ClassMethod Complete(pTaskId As %String, pAction As %String = "Approve", pUser A
 ClassMethod BuildTask(pCaseId As %String, pDecisionJSON As %String, pGate As %String, pSessionId As %String = "", pGateJSON As %String = "", pSource As %String = "") As EnsLib.Workflow.TaskRequest
 {
     Set tD = {}.%FromJSON(pDecisionJSON), tT = tD.target, tReq = ##class(EnsLib.Workflow.TaskRequest).%New(), nl = $CHAR(10)
-    Set tProposal = tD.action _ " " _ $SELECT(tD.action = "patch_mapping": tT.code _ " -> " _ tT.loinc, 1: tT.code _ " " _ tT."from_unit" _ " -> " _ tT."to_unit" _ " x " _ ##class(InteropOps.Gate.Replay).Multiplier(tT))
+    Set tProposal = tD.action _ " " _ $SELECT(tD.action = "patch_mapping": tT.code _ " -> " _ tT.loinc, 1: tT.code _ " " _ tT."from_unit" _ " -> " _ tT."to_unit" _ " x " _ ..N(##class(InteropOps.Gate.Replay).Multiplier(tT)))
     Set tReq.%Subject = "Case " _ pCaseId _ ": " _ tProposal
     Set tMode = ##class(InteropOps.Config.LLMConfig).Mode()
     Set tBy = $SELECT(pSource = "rules": "deterministic rules (no LLM)", tMode = "REPLAY": "agent, answer replayed from a recorded LIVE run", tMode = "MOCK": "agent, local mock LLM", 1: "agent, LIVE LLM call")
@@ -102,7 +102,7 @@ ClassMethod GateLines(pGateJSON As %String, pAction As %String) As %String
         Set tS = tS _ nl _ " - collision: " _ tC."target_local" _ " is absent in this batch"
     } Else {
         Set tS = tS _ nl _ "GATE CHECKED (" _ tG."gate_status" _ ", deterministic):"
-        Set tS = tS _ nl _ " - unit: " _ tUnits _ "; " _ tC."from_unit" _ " x " _ tC.factor _ " -> " _ tC."expected_unit" _ " (UCUM table: " _ $SELECT(tG.checks."strict_ucum".ok: "factor matches", 1: "no match") _ ")"
+        Set tS = tS _ nl _ " - unit: " _ tUnits _ "; " _ tC."from_unit" _ " x " _ ..N(tC.factor) _ " -> " _ tC."expected_unit" _ " (UCUM table: " _ $SELECT(tG.checks."strict_ucum".ok: "factor matches", 1: "no match") _ ")"
         Set tS = tS _ nl _ " - values: batch median " _ ..N(tC."batch_median_before") _ " -> " _ ..N(tC."batch_median_after") _ " vs history median " _ ..N(tC."history_median") _ " (diff " _ tDiff _ ", limit " _ (tC."median_limit" * 100) _ "%)"
     }
     Set tS = tS _ nl _ " - batch after the fix: " _ $SELECT(tG."gate_reasons".%Size() = 0: "no unresolved anomaly", 1: tG."gate_reasons".%ToJSON())

@@ -34,7 +34,7 @@ XData HTML [ MimeType = text/html ]
     <div id="steps" class="steps"></div>
     <table id="trace" class="hidden"><thead><tr><th>Header</th><th>Time (UTC)</th><th>From</th><th>To</th><th>Body</th><th>Type</th><th>Status</th></tr></thead><tbody></tbody></table>
   </section>
-  <section class="card">
+  <section class="card wide">
     <h2>Workflow queue <span class="muted small" id="taskcount"></span></h2>
     <table id="tasks"><thead><tr><th>Task</th><th>Subject</th><th>Status</th><th>Action</th><th>Role</th><th>Session</th><th>Review</th></tr></thead><tbody></tbody></table>
   </section>
@@ -84,7 +84,7 @@ input { font:inherit; padding:3px 6px; border:1px solid var(--line); border-radi
 .arrow { color:var(--mute); }
 button.rej { background:var(--bad); border-color:var(--bad); }
 .runbox button, #tasks button { margin:4px 6px 0 0; }
-#tasks pre { white-space:pre-wrap; max-width:80ch; margin:4px 0; }
+#tasks pre { white-space:pre-wrap; max-width:110ch; margin:4px 0; font-size:12px; }
 .runbox { margin-top:10px; padding:8px 10px; border-left:4px solid var(--acc); background:#f0f4ff; border-radius:4px; }
 .kb li { margin-bottom:8px; } .kb .score { color:var(--mute); font-size:12px; }
 #trace { display:block; max-height:330px; overflow:auto; }
