@@ -121,7 +121,7 @@ ClassMethod Record(pData As %DynamicObject, Output pId As %Integer) As %Status
     if (modeVal '= "MOCK") && (modeVal '= "REPLAY") && (modeVal '= "LIVE") {
         set modeVal = ##class(InteropOps.Config.LLMConfig).Mode()
     }
-    // Honest mode: callers pass LLMConfig.Mode() (REPLAY|LIVE); a dev-mock run is MOCK
+    // Record the mode the row really ran in: callers pass LLMConfig.Mode() (REPLAY|LIVE); a dev-mock run is MOCK
     // (GateDetail.provider_kind=MOCK, else ProviderFactory.Kind()=MOCK); MOCK may run with Mode() LIVE or REPLAY.
     if (modeVal '= "MOCK") && ..IsMockRun(..GetDynVal(pData, "gateDetail", "GateDetail")) {
         set modeVal = "MOCK"

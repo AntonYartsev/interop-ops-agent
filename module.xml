@@ -12,7 +12,7 @@
         <License>MIT</License>
       </Author>
       <Packaging>module</Packaging>
-      <!-- Tested only on IRIS 2026.3.0AI build 154 with IPM 0.10.10 (AI Hub EAP: %AI.Agent, %AI.Provider).
+      <!-- Tested only on IRIS 2027.1.0AI build 109 (ARM64 and x64) and 2026.3.0AI build 154, with IPM 0.10.10 (AI Hub EAP: %AI.Agent, %AI.Provider).
            The AI Hub requirement itself cannot be expressed here. -->
       <SystemRequirements Version=">=2026.3" Interoperability="enabled"/>
       <SourcesRoot>src</SourcesRoot>
@@ -24,7 +24,7 @@
       <!-- FileCopy copies cases/, data/ and replay/ into dedicated install directory ${mgrdir}interop-ops-agent/.
            InteropOps.Util.Paths reads the repository mounts first (/irisdev/app/, then /home/irisowner/dev/), so the
            docker-compose dev flow and demo.sh stay unchanged, and uses ${mgrdir}interop-ops-agent/ when no repository is mounted.
-           On uninstall, %File.RemoveDirectoryTree ensures ${mgrdir}interop-ops-agent/ is cleaned up.
+           On uninstall, %File.RemoveDirectoryTree removes ${mgrdir}interop-ops-agent/.
            No WebApplication: /demo, its roles and the IOA.DemoWrite privileged routine application are created by
            Setup.EnsureDemoWebApp, which InitAndStartProduction calls. -->
       <FileCopy Name="cases/" Target="${mgrdir}interop-ops-agent/cases/"/>

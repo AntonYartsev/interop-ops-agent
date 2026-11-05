@@ -75,7 +75,7 @@ def judge(cid, exp, r):
     return "OK", ""
 
 def mode_line(rows):
-    """Honest run mode from the rows' Mode values (MOCK / REPLAY / LIVE, or mixed); CONFIG_MODE (demo.sh) only as a note."""
+    """Run mode taken from the rows' Mode values (MOCK / REPLAY / LIVE, or mixed); CONFIG_MODE (demo.sh) only as a note."""
     counts = {}
     for r in rows:
         m = str(g(r, "mode") or "?").upper()
@@ -131,7 +131,7 @@ def main():
         sid = g(r, "sessionId")
         link = f"http://localhost:{WEB}/csp/irisapp/EnsPortal.VisualTrace.zen?SESSIONID={sid}" if sid else "-"
         src = str(g(r, "source") or "-")
-        src = "auto" if src.lower() == "human:auto" else src  # human:auto counts as human, shown honestly as auto
+        src = "auto" if src.lower() == "human:auto" else src  # human:auto counts as human, but is shown as auto
         print(f"{cid:<4} | {dec[:38]:<38} | {src:<6} | {str(g(r,'finalStatus') or '-'):<14} | {e['action']:<14} | {v:<7} | {link}" + (f"  ({why})" if why and v != "OK" else ""))
         if v == "PENDING":
             pending.append(cid)

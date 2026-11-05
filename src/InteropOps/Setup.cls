@@ -39,7 +39,7 @@ ClassMethod ReadDotEnv(Output pEnv) As %Status
 }
 
 /// Synchronize LLM and IOA configuration from process environment (with .env fallback) into ^IOA.Config.
-/// Never stores secret API keys or passwords in ^IOA.Config - only stores key_present (0/1).
+/// Never stores secret API keys or passwords in ^IOA.Config, only key_present (0/1).
 ClassMethod SyncEnvToGlobal(Output pEnvMap) As %Status
 {
     do ..ReadDotEnv(.pEnvMap)
