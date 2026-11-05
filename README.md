@@ -37,7 +37,7 @@ Open the [online demo](https://ioa.antonyartsev.com/demo/). Nothing to install, 
 
 The demo is shared by all visitors. If someone already approved C01, step 1 already shows the rules result.
 
-To run it locally, load the AI Hub image (build `2027.1.0AI.109.0`) and run `./run.sh`, then `./scripts/demo.sh --replay`. The last line is `correct 12/12`. Details are in [Quick start](#quick-start-replay-no-api-key).
+To run it locally, load the AI Hub image (build `2027.1.0AI.109.0`) and run `./run.sh`, then `./scripts/demo.sh --replay`. The last line is `correct 12/12`. Details are in [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key).
 
 What is different from a typical triage agent:
 
@@ -71,7 +71,7 @@ Every agent tool call shows up in Visual Trace, and every step is saved as a Dec
 | Contest task | Where in the project |
 |---|---|
 | IRIS Interoperability workflow | Production [`InteropOps.Production`](src/InteropOps/Production.cls): file service, BPL process with DTL and rules, gate, Workflow, delivery |
-| IRIS AI Hub agent | Business operation `IOA.Agent`: `%AI.Agent` with 7 `%AI.Tool` tools and a `%AI.Policy.Audit` policy ([table below](#how-the-project-uses-ai-hub)) |
+| IRIS AI Hub agent | Business operation `IOA.Agent`: `%AI.Agent` with 7 `%AI.Tool` tools and a `%AI.Policy.Audit` policy ([table below](https://github.com/AntonYartsev/interop-ops-agent#how-the-project-uses-ai-hub)) |
 | Decision-making task | The agent picks one action from a fixed list (`patch_mapping`, `convert_unit`, `quarantine`, `pass`, `escalate`). The production checks it before it can be applied |
 | Human in the loop | Each fix waits in the Workflow Inbox (role `IOA-Reviewers`) until a person approves or rejects it |
 
@@ -80,10 +80,10 @@ Every agent tool call shows up in Visual Trace, and every step is saved as a Dec
 | Criterion | Evidence |
 |---|---|
 | Complexity | A production with a file service, BPL, DTL, rules, an AI Hub agent with 7 tools and an audit policy, a replay gate, Workflow, lookup apply with rollback ([`Production.cls`](src/InteropOps/Production.cls)). Evidence from .NET PEX, Embedded Python and Vector Search |
-| Clarity of Instructions | [For judges](#for-judges-two-minutes) and [Quick start](#quick-start-replay-no-api-key). Each script ends with one status line: `FINAL STATUS: OK`, `correct 12/12`, `CHECK: OK` |
+| Clarity of Instructions | [For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes) and [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key). Each script ends with one status line: `FINAL STATUS: OK`, `correct 12/12`, `CHECK: OK` |
 | Developer Experience | REPLAY needs no API key and gives the same result on each run. A changed tool result or prompt is marked `DRIFT`. CI tests the scorer and checks the cassettes for schema and secrets ([`.github/workflows/`](.github/workflows/)). `./scripts/reload.sh` recompiles without a rebuild |
-| Applicability | A real problem: senders change codes and units without notice, and valid HL7 raises no alert. Implements Ideas Portal idea [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854). Limits are stated in [Limitations](#limitations) |
-| Usability | The demo page has **Run** per case, **Approve / Reject**, the agent's evidence and Visual Trace links. The review card shows what was checked and what was not ([C18 example](#why-the-ai-does-not-get-the-last-word)) |
+| Applicability | A real problem: senders change codes and units without notice, and valid HL7 raises no alert. Implements Ideas Portal idea [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854). Limits are stated in [Limitations](https://github.com/AntonYartsev/interop-ops-agent#limitations) |
+| Usability | The demo page has **Run** per case, **Approve / Reject**, the agent's evidence and Visual Trace links. The review card shows what was checked and what was not ([C18 example](https://github.com/AntonYartsev/interop-ops-agent#why-the-ai-does-not-get-the-last-word)) |
 
 ```mermaid
 flowchart LR
@@ -137,7 +137,7 @@ To be honest about the numbers: on our 12 demo cases a rules-only baseline also 
 
 ## Quick start (REPLAY, no API key)
 
-The fastest way is the [online demo](https://ioa.antonyartsev.com/demo/), see [For judges](#for-judges-two-minutes).
+The fastest way is the [online demo](https://ioa.antonyartsev.com/demo/), see [For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes).
 
 For a local run you need Docker with Compose v2 (about 4 GB free RAM), `bash`, `python3`, free ports `51272`, `52273`, `52280`, and the IRIS for Health AI Hub Community image, build `2027.1.0AI.109.0`, from the EAP portal.
 
