@@ -14,14 +14,11 @@ An approved fix becomes a rule, so the next batch with the same change needs 0 L
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
-<p align="center">
-  <b><a href="https://ioa.antonyartsev.com/demo/">Online demo (no install)</a></b> ·
-  <a href="#for-judges-two-minutes"><b>For judges</b></a> ·
-  <a href="#how-this-meets-the-judging-criteria">Judging criteria</a> ·
-  <a href="#contest-technology-bonuses">Bonuses</a> ·
-  <a href="#quick-start-replay-no-api-key">Quick start</a> ·
-  <a href="https://openexchange.intersystems.com/package/Interop-Ops-Agent">Open Exchange</a>
-</p>
+<div align="center">
+
+**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](#for-judges-two-minutes)** · [Judging criteria](#how-this-meets-the-judging-criteria) · [Bonuses](#contest-technology-bonuses) · [Quick start](#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent)
+
+</div>
 
 <p align="center">
   Ideas Portal: <a href="https://ideas.intersystems.com/ideas/DPI-I-854">DPI-I-854: AI Log Analytics &amp; Predictive Anomaly Detection for Interoperability</a> (Community Opportunity)
