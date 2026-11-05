@@ -184,7 +184,7 @@ ClassMethod Tasks(pLimit As %String, Output pCode As %Integer) As %DynamicObject
     Set tA = [], tOpen = 0
     While tR.%Next() {
         Set:('tR.Done) tOpen = tOpen + 1
-        Do tA.%Push({"id": (+tR.ID), "status": (tR.St), "subject": (tR.Subj), "message": ($EXTRACT(tR.Msg, 1, 1000)), "role": (tR.RoleN),
+        Do tA.%Push({"id": (+tR.ID), "status": (tR.St), "subject": (tR.Subj), "message": ($EXTRACT(tR.Msg, 1, 2000)), "role": (tR.RoleN),
             "user": (tR.UserN), "action": (tR.Act), "actions": (tR.Acts), "isComplete": (''tR.Done), "sessionId": ($SELECT(tR.Sess = "": "", 1: +tR.Sess)),
             "createdUtc": (tR.Created), "completedUtc": (tR.Completed)})
         Do tA.%Get(tA.%Size() - 1).%Set("canDecide", ('tR.Done && (..OwnTask(tR.ID, .tI) = 200)), "boolean")

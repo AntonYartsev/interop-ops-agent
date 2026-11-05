@@ -84,6 +84,7 @@ input { font:inherit; padding:3px 6px; border:1px solid var(--line); border-radi
 .arrow { color:var(--mute); }
 button.rej { background:var(--bad); border-color:var(--bad); }
 .runbox button, #tasks button { margin:4px 6px 0 0; }
+#tasks pre { white-space:pre-wrap; max-width:80ch; margin:4px 0; }
 .runbox { margin-top:10px; padding:8px 10px; border-left:4px solid var(--acc); background:#f0f4ff; border-radius:4px; }
 .kb li { margin-bottom:8px; } .kb .score { color:var(--mute); font-size:12px; }
 #trace { display:block; max-height:330px; overflow:auto; }
@@ -186,7 +187,9 @@ XData JS [ MimeType = application/javascript ]
       (j.tasks || []).forEach(function (t) {
         var rv = el("td");
         if (t.canDecide) reviewButtons(t.id).forEach(function (b) { rv.appendChild(b); });
-        tb.appendChild(el("tr", null, [td(t.id), td(t.subject), td(t.status, t.isComplete ? "ok" : "warn"), td(t.action), td(t.role), sessBtn(t.sessionId), rv]));
+        var subj = el("td", null, [el("div", { text: String(t.subject || "") })]);
+        if (t.message) { var det = el("details", null, [el("summary", { text: "what the gate checked / what the proposer says" }), el("pre", { cls: "small", text: String(t.message) })]); subj.appendChild(det); }
+        tb.appendChild(el("tr", null, [td(t.id), subj, td(t.status, t.isComplete ? "ok" : "warn"), td(t.action), td(t.role), sessBtn(t.sessionId), rv]));
       });
     });
   }

@@ -31,6 +31,14 @@ ClassMethod Run() As %Boolean
         Do ..Copy("C01", "ZT1", 0, "")
         Set tR = ##class(InteropOps.Lookup.Apply).Run("ZT1", tMap, "", "not-the-reviewed-batch")
         If (tR.error '[ "batch_changed") || $DATA(^Ens.LookupTable(tTable, "SOD")) Set tFail = tFail _ " batch_changed_applied"
+        // 6b. SOD got another value after the gate: nothing applied, the other value stays
+        Do ##class(Ens.Util.LookupTable).%UpdateValue(tTable, "SOD", "2823-3")
+        Set tR = ##class(InteropOps.Lookup.Apply).Run("ZT1", tMap, "", ##class(InteropOps.Rules.Data).BatchSHA("ZT1"))
+        If (tR.error '[ "lookup_changed") || ($GET(^Ens.LookupTable(tTable, "SOD")) '= "2823-3") Set tFail = tFail _ " lookup_changed_applied=" _ tR.%ToJSON()
+        Do ##class(Ens.Util.LookupTable).%RemoveValue(tTable, "SOD")
+        // 6c. reprocess fails with an error (a host without SendRequestSync): the mapping is rolled back
+        Set tR = ##class(InteropOps.Lookup.Apply).Run("ZT1", tMap, {}, ##class(InteropOps.Rules.Data).BatchSHA("ZT1"))
+        If (tR.error '[ "reprocess_error") || $DATA(^Ens.LookupTable(tTable, "SOD")) Set tFail = tFail _ " reprocess_error_no_rollback=" _ tR.%ToJSON()
         // 7. Apply on the clean copy: all 30 valid, mapping stays
         Set tR = ##class(InteropOps.Lookup.Apply).Run("ZT1", tMap, "", ##class(InteropOps.Rules.Data).BatchSHA("ZT1"))
         If (tR.applied '= "SOD->2951-2") || (tR.reprocess.valid '= 30) Set tFail = tFail _ " clean_apply=" _ tR.%ToJSON()

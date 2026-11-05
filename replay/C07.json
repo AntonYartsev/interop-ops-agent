@@ -3,64 +3,24 @@
   "case_id":"C07",
   "match":{
     "msh10":"C07-MSG001",
-    "prompt_sha256":"31fe4d25822656aa3cae1d86bcb23e1d8e8be03282c5b90033bac5ce22430a5f"
+    "prompt_sha256":"991dca9c26c5fffcc41a551dd77dad8301f62bc4c5eb07216dab75e1afa12485"
   },
   "recorded":{
-    "profile":"openai",
-    "model":"gpt-5.4-mini",
+    "profile":"rules",
+    "model":"none",
     "build":"2027.1.0AI.109",
-    "at":"2026-11-05T10:06:01Z",
-    "source":"live"
+    "at":"2026-11-05T13:04:04Z",
+    "source":"rules"
   },
   "turns":[
-    {
-      "role":"assistant",
-      "tool_calls":[
-        {
-          "name":"CheckCriticalValues",
-          "arguments":{
-          }
-        },
-        {
-          "name":"GetValidationEvidence",
-          "arguments":{
-          }
-        },
-        {
-          "name":"GetBatchMessages",
-          "arguments":{
-            "limit":10,
-            "offset":0
-          }
-        }
-      ],
-      "tool_results":[
-        {
-          "name":"CheckCriticalValues",
-          "content":"{\"case_id\":\"C07\",\"critical\":[],\"critical_count\":0,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":90,\"results_not_checked\":60,\"total_messages\":30}"
-        },
-        {
-          "name":"GetValidationEvidence",
-          "content":"{\"case_id\":\"C07\",\"hl7check\":{\"agree\":0,\"dotnet_only\":1,\"engine\":\"NHapi 3.2.3.0 / v2.5.1 model; IRIS valspec dm-zrny-x\",\"errors\":0,\"findings\":[{\"code\":\"OBX11_CORRECTION\",\"count\":1,\"examples\":[\"C07-MSG012\"],\"message\":\"K: corrected result (OBX-11=C) replaces a previously sent value\",\"path\":\"OBX[3]-11\",\"rule\":\"obx-rule\",\"severity\":\"info\",\"source\":\"dotnet\"}],\"iris_invalid\":0,\"iris_only\":0,\"messages\":30,\"messages_with_errors\":0,\"status\":\"ok\",\"warnings\":0},\"kb\":{\"status\":\"no_findings\"},\"ucum\":{\"findings\":[{\"basis\":\"prefix\",\"code\":\"GLU\",\"count\":30,\"examples\":[\"C07-MSG001\",\"C07-MSG002\",\"C07-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[1]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"NA\",\"count\":30,\"examples\":[\"C07-MSG001\",\"C07-MSG002\",\"C07-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[2]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"K\",\"count\":30,\"examples\":[\"C07-MSG001\",\"C07-MSG002\",\"C07-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[3]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"CREAT\",\"count\":30,\"examples\":[\"C07-MSG001\",\"C07-MSG002\",\"C07-MSG003\"],\"expected_unit\":\"umol/L\",\"factor\":1,\"flags\":{\"H\":1},\"obx\":\"OBX[4]\",\"severity\":\"info\",\"unit\":\"umol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"BUN\",\"count\":30,\"examples\":[\"C07-MSG001\",\"C07-MSG002\",\"C07-MSG003\"],\"expected_unit\":\"mg/dL\",\"factor\":1,\"flags\":{\"H\":2,\"L\":1},\"obx\":\"OBX[5]\",\"severity\":\"info\",\"unit\":\"mg/dL\",\"verdict\":\"same_unit\"}],\"status\":\"ok\",\"summary\":\"UCUM: 150 OBX in 30 messages; 150 unit OK vs lookup, 0 need attention\"}}"
-        },
-        {
-          "name":"GetBatchMessages",
-          "content":"{\"case_id\":\"C07\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C07-MSG001|P|2.5.1\\nPID|1||MRN-101600^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1600||19500810|M\\nORC|RE|ORD-61600|LAB-91600||||||20261025080000\\nOBR|1|ORD-61600|LAB-91600|BMP^Basic Metabolic Panel^L|||20261025080000\\nOBX|1|NM|GLU^Glucose^L||5.2|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||140.3|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.01|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||89|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||11|mg/dL|7-20|N|||F\\n\"},{\"index\":1,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080200||ORU^R01^ORU_R01|C07-MSG002|P|2.5.1\\nPID|1||MRN-101601^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1601||19510911|F\\nORC|RE|ORD-61601|LAB-91601||||||20261025080200\\nOBR|1|ORD-61601|LAB-91601|BMP^Basic Metabolic Panel^L|||20261025080200\\nOBX|1|NM|GLU^Glucose^L||4.9|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||139.6|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.3|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||85|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||18|mg/dL|7-20|N|||F\\n\"},{\"index\":2,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080400||ORU^R01^ORU_R01|C07-MSG003|P|2.5.1\\nPID|1||MRN-101602^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1602||19520112|M\\nORC|RE|ORD-61602|LAB-91602||||||20261025080400\\nOBR|1|ORD-61602|LAB-91602|BMP^Basic Metabolic Panel^L|||20261025080400\\nOBX|1|NM|GLU^Glucose^L||4.8|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||141.4|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.57|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||89|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||11|mg/dL|7-20|N|||F\\n\"},{\"index\":3,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080600||ORU^R01^ORU_R01|C07-MSG004|P|2.5.1\\nPID|1||MRN-101603^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1603||19530213|F\\nORC|RE|ORD-61603|LAB-91603||||||20261025080600\\nOBR|1|ORD-61603|LAB-91603|BMP^Basic Metabolic Panel^L|||20261025080600\\nOBX|1|NM|GLU^Glucose^L||5.6|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||141|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.18|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||82|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||17|mg/dL|7-20|N|||F\\n\"},{\"index\":4,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080800||ORU^R01^ORU_R01|C07-MSG005|P|2.5.1\\nPID|1||MRN-101604^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1604||19540314|M\\nORC|RE|ORD-61604|LAB-91604||||||20261025080800\\nOBR|1|ORD-61604|LAB-91604|BMP^Basic Metabolic Panel^L|||20261025080800\\nOBX|1|NM|GLU^Glucose^L||4.6|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||137.6|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.18|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||98|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||21|mg/dL|7-20|H|||F\\n\"},{\"index\":5,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081000||ORU^R01^ORU_R01|C07-MSG006|P|2.5.1\\nPID|1||MRN-101605^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1605||19550415|F\\nORC|RE|ORD-61605|LAB-91605||||||20261025081000\\nOBR|1|ORD-61605|LAB-91605|BMP^Basic Metabolic Panel^L|||20261025081000\\nOBX|1|NM|GLU^Glucose^L||5.6|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||142.2|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.53|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||76|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||12|mg/dL|7-20|N|||F\\n\"},{\"index\":6,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081200||ORU^R01^ORU_R01|C07-MSG007|P|2.5.1\\nPID|1||MRN-101606^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1606||19560516|M\\nORC|RE|ORD-61606|LAB-91606||||||20261025081200\\nOBR|1|ORD-61606|LAB-91606|BMP^Basic Metabolic Panel^L|||20261025081200\\nOBX|1|NM|GLU^Glucose^L||4.3|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||141.1|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.18|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||72|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||12|mg/dL|7-20|N|||F\\n\"},{\"index\":7,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081400||ORU^R01^ORU_R01|C07-MSG008|P|2.5.1\\nPID|1||MRN-101607^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1607||19570617|F\\nORC|RE|ORD-61607|LAB-91607||||||20261025081400\\nOBR|1|ORD-61607|LAB-91607|BMP^Basic Metabolic Panel^L|||20261025081400\\nOBX|1|NM|GLU^Glucose^L||5.2|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||140.4|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.1|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||73|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||12|mg/dL|7-20|N|||F\\n\"},{\"index\":8,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081600||ORU^R01^ORU_R01|C07-MSG009|P|2.5.1\\nPID|1||MRN-101608^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1608||19580718|M\\nORC|RE|ORD-61608|LAB-91608||||||20261025081600\\nOBR|1|ORD-61608|LAB-91608|BMP^Basic Metabolic Panel^L|||20261025081600\\nOBX|1|NM|GLU^Glucose^L||4.7|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||137|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.17|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||75|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||17|mg/dL|7-20|N|||F\\n\"},{\"index\":9,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025081800||ORU^R01^ORU_R01|C07-MSG010|P|2.5.1\\nPID|1||MRN-101609^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1609||19590819|F\\nORC|RE|ORD-61609|LAB-91609||||||20261025081800\\nOBR|1|ORD-61609|LAB-91609|BMP^Basic Metabolic Panel^L|||20261025081800\\nOBX|1|NM|GLU^Glucose^L||4.8|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|NA^Sodium^L||142.7|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.44|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||90|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||15|mg/dL|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
-        }
-      ]
-    },
-    {
-      "role":"assistant",
-      "content":"{\"action\":\"pass\",\"target\":null,\"reason\":\"All 30 messages validate structurally, all OBX units match lookup with no conversion needed, and the only noted issue is one non-interface correction flag (OBX-11=C) plus one BUN high and one BUN low clinical result that are not interface problems.\",\"evidence\":[\"0/30 messages with HL7 structure errors in the deterministic validation\",\"150/150 OBX units are OK vs lookup; CREAT uses umol/L and BUN uses mg/dL as expected\",\"CheckCriticalValues found no critical results in the checked results set\",\"C07-MSG012 has OBX-11=C on K, which the .NET second opinion flagged as a correction/replacement, not an error\",\"BUN abnormal flags H/L appear in the data but the code and unit are correct, so they are clinical findings\"],\"field_drift\":null}"
-    }
   ],
   "expected":{
     "decision":"pass",
-    "rationale_short":"All 30 messages validate structurally, all OBX units match lookup with no conversion needed, and the only noted issue is one non-interface correction flag (OBX-11=C) plus one BUN high and one BUN low clinical result that are not interface problems."
+    "rationale_short":"Rule A0: no anomaly in the batch"
   },
   "usage":{
-    "prompt_tokens":7629,
-    "completion_tokens":250
+    "prompt_tokens":0,
+    "completion_tokens":0
   },
-  "llm_calls":2
+  "llm_calls":0
 }
