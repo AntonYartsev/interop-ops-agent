@@ -145,7 +145,7 @@ XData JS [ MimeType = application/javascript ]
       (j.cases || []).forEach(function (c) {
         var d = c.latest || {}, e = c.expected || {};
         var run = el("td"); run.appendChild(el("button", { type: "button", "data-run": c.id, text: "Run" }));
-        tb.appendChild(el("tr", null, [td(c.id), td(c.title, "muted"), td((e.action || "") + " " + tgt(e.target)),
+        tb.appendChild(el("tr", null, [td(c.id), td((c.set === "pair" ? "specimen pair: " : "") + c.title, "muted"), td((e.action || "") + " " + tgt(e.target)),
           td(d.action ? d.action + " " + tgt(d.target) : "-"), td(d.finalStatus || "", statusCls(d.finalStatus)), td(d.source || ""),
           td(d.llmCalls != null ? d.llmCalls : ""), sessBtn(d.sessionId), run]));
       });

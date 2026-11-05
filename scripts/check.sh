@@ -100,8 +100,9 @@ GT="$(val GATE_TEST)"
 rm -f "$OUT"
 
 shopt -s nullglob
-CASSETTES=( replay/C??.json )
 CASES=( cases/C??-*.hl7 )
+CASSETTES=()  # one cassette per main case; pair cassettes (replay/C18.json) are extra
+for f in "${CASES[@]}"; do id="$(basename "$f")"; id="${id%%-*}"; [ -f "replay/$id.json" ] && CASSETTES+=( "replay/$id.json" ); done
 shopt -u nullglob
 [ "${#CASES[@]}" -eq 12 ] && res OK "12 synthetic case files in cases/" || res FAIL "${#CASES[@]} case files in cases/, expected 12"
 if [ "${#CASSETTES[@]}" -eq 12 ]; then

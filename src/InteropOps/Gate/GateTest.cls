@@ -39,6 +39,9 @@ ClassMethod Run() As %Boolean
         // 6c. reprocess fails with an error (a host without SendRequestSync): the mapping is rolled back
         Set tR = ##class(InteropOps.Lookup.Apply).Run("ZT1", tMap, {}, ##class(InteropOps.Rules.Data).BatchSHA("ZT1"))
         If (tR.error '[ "reprocess_error") || $DATA(^Ens.LookupTable(tTable, "SOD")) Set tFail = tFail _ " reprocess_error_no_rollback=" _ tR.%ToJSON()
+        // 6d. specimen words for the review warning
+        Set R = "InteropOps.Gate.Reference"
+        If ($CLASSMETHOD(R, "Specimen", "Sodium, whole blood") '= "blood") || ($CLASSMETHOD(R, "Specimen", "Sodium [Moles/volume] in Serum or Plasma") '= "serum/plasma") || ($CLASSMETHOD(R, "Specimen", "Hb") '= "") Set tFail = tFail _ " specimen_words"
         // 7. Apply on the clean copy: all 30 valid, mapping stays
         Set tR = ##class(InteropOps.Lookup.Apply).Run("ZT1", tMap, "", ##class(InteropOps.Rules.Data).BatchSHA("ZT1"))
         If (tR.applied '= "SOD->2951-2") || (tR.reprocess.valid '= 30) Set tFail = tFail _ " clean_apply=" _ tR.%ToJSON()

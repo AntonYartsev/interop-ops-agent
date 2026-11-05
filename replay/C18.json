@@ -1,0 +1,76 @@
+{
+  "schema":"ioa-replay/1",
+  "case_id":"C18",
+  "match":{
+    "msh10":"C18-MSG001",
+    "prompt_sha256":"948943d34a96afe2d2163815d900304394f1545e4525c4b6faada2548e484934"
+  },
+  "recorded":{
+    "profile":"openai",
+    "model":"gpt-5.4-mini",
+    "build":"2027.1.0AI.109",
+    "at":"2026-11-05T13:21:03Z",
+    "source":"live"
+  },
+  "turns":[
+    {
+      "role":"assistant",
+      "tool_calls":[
+        {
+          "name":"CheckCriticalValues",
+          "arguments":{
+          }
+        },
+        {
+          "name":"GetValidationEvidence",
+          "arguments":{
+          }
+        },
+        {
+          "name":"SearchLookup",
+          "arguments":{
+            "query":"SOD"
+          }
+        },
+        {
+          "name":"GetBatchMessages",
+          "arguments":{
+            "limit":2,
+            "offset":0
+          }
+        }
+      ],
+      "tool_results":[
+        {
+          "name":"CheckCriticalValues",
+          "content":"{\"case_id\":\"C18\",\"critical\":[],\"critical_count\":0,\"critical_table\":{\"GLU\":{\"high\":25,\"low\":2.5,\"unit\":\"mmol/L\"},\"HCT\":{\"high\":60,\"low\":20,\"unit\":\"%\"},\"HGB\":{\"high\":20,\"low\":7,\"unit\":\"g/dL\"},\"K\":{\"high\":6.2,\"low\":2.8,\"unit\":\"mmol/L\"},\"NA\":{\"high\":160,\"low\":120,\"unit\":\"mmol/L\"},\"PLT\":{\"high\":1000,\"low\":20,\"unit\":\"10*3/uL\"},\"WBC\":{\"high\":30,\"low\":2,\"unit\":\"10*3/uL\"}},\"note\":\"Critical or abnormal values with a correct code and a correct unit are clinical findings, not interface problems: decide pass and mention them in reason.\",\"results_checked\":60,\"results_not_checked\":90,\"total_messages\":30}"
+        },
+        {
+          "name":"GetValidationEvidence",
+          "content":"{\"case_id\":\"C18\",\"hl7check\":{\"agree\":0,\"dotnet_only\":0,\"engine\":\"NHapi 3.2.3.0 / v2.5.1 model; IRIS valspec dm-zrny-x\",\"errors\":0,\"findings\":[],\"iris_invalid\":0,\"iris_only\":0,\"messages\":30,\"messages_with_errors\":0,\"status\":\"ok\",\"warnings\":0},\"kb\":{\"embedder\":\"local-hash-384-v1\",\"results\":[{\"score\":0.2252,\"slug\":\"kb-new-code-after-upgrade\",\"title\":\"New local code after a sender LIS upgrade\"},{\"score\":0.1917,\"slug\":\"kb-unknown-local-code\",\"title\":\"Unknown local lab code with no LOINC mapping\"},{\"score\":0.1898,\"slug\":\"kb-ambiguous-code\",\"title\":\"Ambiguous or unrecognized analyte code\"}],\"status\":\"ok\"},\"ucum\":{\"findings\":[{\"code\":\"SOD\",\"count\":30,\"examples\":[\"C18-MSG001\",\"C18-MSG002\",\"C18-MSG003\"],\"expected_unit\":\"\",\"obx\":\"OBX[2]\",\"severity\":\"warning\",\"unit\":\"mmol/L\",\"verdict\":\"code_not_in_lookup\"},{\"basis\":\"prefix\",\"code\":\"GLU\",\"count\":30,\"examples\":[\"C18-MSG001\",\"C18-MSG002\",\"C18-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[1]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"K\",\"count\":30,\"examples\":[\"C18-MSG001\",\"C18-MSG002\",\"C18-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[3]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"CREAT\",\"count\":30,\"examples\":[\"C18-MSG001\",\"C18-MSG002\",\"C18-MSG003\"],\"expected_unit\":\"umol/L\",\"factor\":1,\"obx\":\"OBX[4]\",\"severity\":\"info\",\"unit\":\"umol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"BUN\",\"count\":30,\"examples\":[\"C18-MSG001\",\"C18-MSG002\",\"C18-MSG003\"],\"expected_unit\":\"mg/dL\",\"factor\":1,\"obx\":\"OBX[5]\",\"severity\":\"info\",\"unit\":\"mg/dL\",\"verdict\":\"same_unit\"}],\"status\":\"ok\",\"summary\":\"UCUM: 150 OBX in 30 messages; 120 unit OK vs lookup, 30 need attention\"}}"
+        },
+        {
+          "name":"SearchLookup",
+          "content":"{\"matches\":[{\"canonical_name\":\"Sodium [Moles/volume] in Serum or Plasma\",\"expected_unit\":\"mmol/L\",\"history_median\":140.15,\"history_units\":{\"mmol/L\":100},\"local_code\":\"NA\",\"loinc\":\"2951-2\",\"panel\":\"BMP\",\"ref_range\":\"135-145\",\"short_name\":\"Sodium\"}],\"query\":\"SOD\"}"
+        },
+        {
+          "name":"GetBatchMessages",
+          "content":"{\"case_id\":\"C18\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261030080000||ORU^R01^ORU_R01|C18-MSG001|P|2.5.1\\nPID|1||MRN-104001^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT4001||19510211|F\\nORC|RE|ORD-64001|LAB-94001||||||20261030080000\\nOBR|1|ORD-64001|LAB-94001|BMP^Basic Metabolic Panel^L|||20261030080000\\nOBX|1|NM|GLU^Glucose^L||5.4|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|SOD^Sodium, whole blood^L||141.8|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.51|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||95|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||17|mg/dL|7-20|N|||F\\n\"},{\"index\":1,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261030080200||ORU^R01^ORU_R01|C18-MSG002|P|2.5.1\\nPID|1||MRN-104002^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT4002||19520312|M\\nORC|RE|ORD-64002|LAB-94002||||||20261030080200\\nOBR|1|ORD-64002|LAB-94002|BMP^Basic Metabolic Panel^L|||20261030080200\\nOBX|1|NM|GLU^Glucose^L||5.3|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|SOD^Sodium, whole blood^L||141.6|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.68|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||86|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||18|mg/dL|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
+        }
+      ]
+    },
+    {
+      "role":"assistant",
+      "content":"{\"action\":\"patch_mapping\",\"target\":{\"code\":\"SOD\",\"loinc\":\"2951-2\"},\"reason\":\"SOD is an unmapped local sodium code that matches the lookup entry for Sodium with the correct unit mmol/L and consistent historical value range, and there are no structural errors or critical-value interface issues.\",\"evidence\":[\"SearchLookup found SOD -> local_code NA, LOINC 2951-2, Sodium, expected unit mmol/L, ref range 135-145, history median 140.15\",\"Validation evidence shows SOD is code_not_in_lookup in 30/30 messages and all 30 use mmol/L\",\"The batch has 30 messages and HL7 structure validation found 0 errors\",\"CheckCriticalValues reported 0 critical results; sodium values are within the receiver's critical table when code/unit are correct\",\"Example message C18-MSG001 has OBX-2 SOD, value 141.8, unit mmol/L, consistent with Sodium\"],\"field_drift\":null}"
+    }
+  ],
+  "expected":{
+    "decision":"patch_mapping",
+    "rationale_short":"SOD is an unmapped local sodium code that matches the lookup entry for Sodium with the correct unit mmol/L and consistent historical value range, and there are no structural errors or critical-value interface issues."
+  },
+  "usage":{
+    "prompt_tokens":5551,
+    "completion_tokens":287
+  },
+  "llm_calls":2
+}

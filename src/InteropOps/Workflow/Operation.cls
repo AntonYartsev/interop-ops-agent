@@ -100,6 +100,9 @@ ClassMethod GateLines(pGateJSON As %String, pAction As %String) As %String
         Set tS = tS _ nl _ " - unit: " _ tUnits _ "; expected unit of " _ tC."target_local" _ ": " _ tC."expected_unit"
         Set tS = tS _ nl _ " - values: batch median " _ ..N(tC."batch_median") _ " vs history median of " _ tC."target_local" _ " " _ ..N(tC."history_median") _ " (diff " _ tDiff _ ", limit " _ (tC."median_limit" * 100) _ "%)"
         Set tS = tS _ nl _ " - collision: " _ tC."target_local" _ " is absent in this batch"
+        Set tSp = tC."sender_specimen", tTp = tC."target_specimen"
+        Set tS = tS _ nl _ $SELECT((tSp '= "") && (tTp '= "") && (tSp '= tTp): " ! WARNING specimen: sender text '" _ tC.description _ "' names " _ tSp _ ", the target code is for " _ tTp _ ". Reject unless you know they are the same test.",
+            tSp = "": " - specimen: the sender text names none", 1: " - specimen: " _ tSp _ " in the sender text and in the target name") _ " (word match only)"
     } Else {
         Set tS = tS _ nl _ "GATE CHECKED (" _ tG."gate_status" _ ", deterministic):"
         Set tS = tS _ nl _ " - unit: " _ tUnits _ "; " _ tC."from_unit" _ " x " _ ..N(tC.factor) _ " -> " _ tC."expected_unit" _ " (UCUM table: " _ $SELECT(tG.checks."strict_ucum".ok: "factor matches", 1: "no match") _ ")"

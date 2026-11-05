@@ -19,11 +19,14 @@ Parameter MAXKBQUERY = 200;
 ClassMethod CaseFile(pId As %String) As %String
 {
     Quit:('$MATCH(pId, "C[0-9]{2}")) ""
-    Set tDir = ##class(InteropOps.Util.Paths).CasesDir(), tF = $ZSEARCH(tDir_pId_"-*.hl7"), tOut = ""
-    While tF '= "" {
-        Set tB = ##class(%File).GetFilename(tF)
-        If $MATCH(tB, pId_"-[A-Za-z0-9_-]+\.hl7") Set tOut = tF
-        Set tF = $ZSEARCH("")
+    Set tOut = ""
+    For tDir = ##class(InteropOps.Util.Paths).CasesDir(), ##class(InteropOps.Util.Paths).CasesDir() _ "pair/" {
+        Set tF = $ZSEARCH(tDir_pId_"-*.hl7")
+        While tF '= "" {
+            Set tB = ##class(%File).GetFilename(tF)
+            If $MATCH(tB, pId_"-[A-Za-z0-9_-]+\.hl7") Set tOut = tF
+            Set tF = $ZSEARCH("")
+        }
     }
     Quit tOut
 }
@@ -82,24 +85,27 @@ ClassMethod PendingFiles(pPrefix As %String) As %Integer
 /// GET /api/cases: the case files with the expected result (cases/expected.json) and the latest Decision row
 ClassMethod Cases(Output pCode As %Integer) As %DynamicObject
 {
-    Set pCode = 200, tDir = ##class(InteropOps.Util.Paths).CasesDir(), tExp = ""
-    Try {
-        Set tS = ##class(%Stream.FileCharacter).%New(), tS.TranslateTable = "UTF8"
-        If $$$ISOK(tS.LinkToFile(tDir_"expected.json")) Set tExp = ##class(%DynamicObject).%FromJSON(tS).cases
-    } Catch { Set tExp = "" }
-    Set tList = [], tF = $ZSEARCH(tDir_"C*.hl7")
-    While tF '= "" {
-        Set tB = ##class(%File).GetFilename(tF)
-        Set:$MATCH(tB, "C[0-9]{2}-[A-Za-z0-9_-]+\.hl7") tSort(tB) = ""
-        Set tF = $ZSEARCH("")
-    }
-    Set tB = ""
-    For {
-        Set tB = $ORDER(tSort(tB))
-        Quit:(tB = "")
-        Set tId = $PIECE(tB, "-")
-        If 1 {
-            Set tC = {"id": (tId), "file": (tB), "title": ($TRANSLATE($PIECE($PIECE(tB, ".hl7"), "-", 2, 99), "-", " "))}
+    Set pCode = 200, tList = []
+    // main cases, then the specimen pair (cases/pair/, set "pair")
+    For tSet = "main", "pair" {
+        Set tDir = ##class(InteropOps.Util.Paths).CasesDir() _ $SELECT(tSet = "pair": "pair/", 1: ""), tExp = ""
+        Try {
+            Set tS = ##class(%Stream.FileCharacter).%New(), tS.TranslateTable = "UTF8"
+            If $$$ISOK(tS.LinkToFile(tDir_"expected.json")) Set tExp = ##class(%DynamicObject).%FromJSON(tS).cases
+        } Catch { Set tExp = "" }
+        Kill tSort
+        Set tF = $ZSEARCH(tDir_"C*.hl7")
+        While tF '= "" {
+            Set tB = ##class(%File).GetFilename(tF)
+            Set:$MATCH(tB, "C[0-9]{2}-[A-Za-z0-9_-]+\.hl7") tSort(tB) = ""
+            Set tF = $ZSEARCH("")
+        }
+        Set tB = ""
+        For {
+            Set tB = $ORDER(tSort(tB))
+            Quit:(tB = "")
+            Set tId = $PIECE(tB, "-")
+            Set tC = {"id": (tId), "set": (tSet), "file": (tB), "title": ($TRANSLATE($PIECE($PIECE(tB, ".hl7"), "-", 2, 99), "-", " "))}
             If $ISOBJECT(tExp) && $ISOBJECT(tExp.%Get(tId)) Set e = tExp.%Get(tId), tC.expected = {"action": (e.action), "target": (e.target)}
             Set tLast = ..DecisionRows("WHERE CaseId = ?", tId, 1, 0)
             Set tC.latest = $SELECT(tLast.%Size(): tLast.%Get(0), 1: "")
