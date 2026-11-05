@@ -16,7 +16,7 @@ An approved fix becomes a rule, so the next batch with the same change needs 0 L
 
 <div align="center">
 
-**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](#for-judges-two-minutes)** · [Judging criteria](#how-this-meets-the-judging-criteria) · [Bonuses](#contest-technology-bonuses) · [Quick start](#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent)
+**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes)** · [Judging criteria](https://github.com/AntonYartsev/interop-ops-agent#how-this-meets-the-judging-criteria) · [Bonuses](https://github.com/AntonYartsev/interop-ops-agent#contest-technology-bonuses) · [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent)
 
 </div>
 
