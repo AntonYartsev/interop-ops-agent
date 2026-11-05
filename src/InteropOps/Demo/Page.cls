@@ -123,6 +123,7 @@ XData JS [ MimeType = application/javascript ]
       if (s._code !== 200) { box.appendChild(el("span", { text: "status error " + s._code })); return; }
       var b = s.budget || {}, used = b.callsCap ? Math.min(100, Math.round(100 * b.calls / b.callsCap)) : 0;
       box.appendChild(el("span", { cls: "pill " + s.kind, text: "mode " + s.kind }));
+      if (s.kind === "LIVE") box.appendChild(el("span", { cls: "pill", text: "LIVE model: results can differ from the README and the video (REPLAY)" }));
       box.appendChild(el("span", { cls: "pill", text: "profile " + s.profile + " / " + s.model }));
       box.appendChild(el("span", { cls: "pill", text: "key " + s.key }));
       var bar = el("span", { cls: "bar" }); bar.appendChild(el("i", { style: "width:" + (100 - used) + "%" }));
