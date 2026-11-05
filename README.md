@@ -2,7 +2,8 @@
 
 <p align="center">
 An IRIS Interoperability workflow where an AI Hub agent makes the decision: what to do with a batch of lab results after the lab quietly changed its HL7 feed.<br>
-<b>The AI proposes, the production checks, a human decides.</b>
+<b>The AI proposes, the production checks, a human decides.</b><br>
+An approved fix becomes a rule, so the next batch with the same change needs 0 LLM calls.
 </p>
 
 <p align="center">
@@ -15,10 +16,37 @@ An IRIS Interoperability workflow where an AI Hub agent makes the decision: what
 
 <p align="center">
   <b><a href="https://ioa.antonyartsev.com/demo/">Online demo (no install)</a></b> ·
+  <a href="#for-judges-two-minutes"><b>For judges</b></a> ·
+  <a href="#how-this-meets-the-judging-criteria">Judging criteria</a> ·
+  <a href="#contest-technology-bonuses">Bonuses</a> ·
+  <a href="#quick-start-replay-no-api-key">Quick start</a> ·
+  <a href="https://openexchange.intersystems.com/package/Interop-Ops-Agent">Open Exchange</a>
+</p>
+
+<p align="center">
   Ideas Portal: <a href="https://ideas.intersystems.com/ideas/DPI-I-854">DPI-I-854: AI Log Analytics &amp; Predictive Anomaly Detection for Interoperability</a> (Community Opportunity)
 </p>
 
 ![Demo page](images/demo-page.png)
+
+## For judges: two minutes
+
+Open the [online demo](https://ioa.antonyartsev.com/demo/). Nothing to install, no key. It calls a real model (`openai/gpt-6-luna`, $0.50 per day), so its results can differ from the recorded ones.
+
+1. Click **Run** on C01. The lab now sends sodium as `SOD`, and the rules cannot explain it, so the agent takes the case.
+2. Open the agent's evidence and the Visual Trace link. You see each tool call and the proposed fix `SOD → 2951-2`.
+3. Click **Approve**. The fix goes into the lookup table and the batch is reprocessed.
+4. Click **Run** on C01 again. Now the rules decide it with 0 LLM calls.
+
+The demo is shared by all visitors. If someone already approved C01, step 1 already shows the rules result.
+
+To run it locally, load the AI Hub image (build `2027.1.0AI.109.0`) and run `./run.sh`, then `./scripts/demo.sh --replay`. The last line is `correct 12/12`. Details are in [Quick start](#quick-start-replay-no-api-key).
+
+What is different from a typical triage agent:
+
+- **The fix is learned.** An approved patch goes into the lookup table `IOA.LabCodeMap`. The same change in the next batch needs no AI.
+- **The fix is tested before a human sees it.** The gate replays 200 historical messages, and their output must not change ([`Gate/Replay.cls`](src/InteropOps/Gate/Replay.cls)).
+- **The approval is bound to the data.** It is valid only for the batch it was made for (SHA-256 at ingest).
 
 ## The problem
 
@@ -49,6 +77,16 @@ Every agent tool call shows up in Visual Trace, and every step is saved as a Dec
 | IRIS AI Hub agent | Business operation `IOA.Agent`: `%AI.Agent` with 7 `%AI.Tool` tools and a `%AI.Policy.Audit` policy ([table below](#how-the-project-uses-ai-hub)) |
 | Decision-making task | The agent picks one action from a fixed list (`patch_mapping`, `convert_unit`, `quarantine`, `pass`, `escalate`). The production checks it before it can be applied |
 | Human in the loop | Each fix waits in the Workflow Inbox (role `IOA-Reviewers`) until a person approves or rejects it |
+
+### How this meets the judging criteria
+
+| Criterion | Evidence |
+|---|---|
+| Complexity | A production with a file service, BPL, DTL, rules, an AI Hub agent with 7 tools and an audit policy, a replay gate, Workflow, lookup apply with rollback ([`Production.cls`](src/InteropOps/Production.cls)). Evidence from .NET PEX, Embedded Python and Vector Search |
+| Clarity of Instructions | [For judges](#for-judges-two-minutes) and [Quick start](#quick-start-replay-no-api-key). Each script ends with one status line: `FINAL STATUS: OK`, `correct 12/12`, `CHECK: OK` |
+| Developer Experience | REPLAY needs no API key and gives the same result on each run. A changed tool result or prompt is marked `DRIFT`. CI tests the scorer and checks the cassettes for schema and secrets ([`.github/workflows/`](.github/workflows/)). `./scripts/reload.sh` recompiles without a rebuild |
+| Applicability | A real problem: senders change codes and units without notice, and valid HL7 raises no alert. Implements Ideas Portal idea [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854). Limits are stated in [Limitations](#limitations) |
+| Usability | The demo page has **Run** per case, **Approve / Reject**, the agent's evidence and Visual Trace links. The review card shows what was checked and what was not ([C18 example](#why-the-ai-does-not-get-the-last-word)) |
 
 ```mermaid
 flowchart LR
@@ -102,14 +140,7 @@ To be honest about the numbers: on our 12 demo cases a rules-only baseline also 
 
 ## Quick start (REPLAY, no API key)
 
-The fastest way is the [online demo](https://ioa.antonyartsev.com/demo/). It calls a real model (`openai/gpt-6-luna`, $0.50 per day), so its results can differ from the recorded ones. Try this in 2 minutes:
-
-1. Click **Run** on C01. The lab now sends sodium as `SOD`, and the rules cannot explain it, so the agent takes the case.
-2. Open the agent's evidence and the Visual Trace link. You see each tool call and the proposed fix `SOD → 2951-2`.
-3. Click **Approve**. The fix goes into the lookup table and the batch is reprocessed.
-4. Click **Run** on C01 again. Now the rules decide it with 0 LLM calls.
-
-The demo is shared by all visitors. If someone already approved C01, step 1 already shows the rules result.
+The fastest way is the [online demo](https://ioa.antonyartsev.com/demo/), see [For judges](#for-judges-two-minutes).
 
 For a local run you need Docker with Compose v2 (about 4 GB free RAM), `bash`, `python3`, free ports `51272`, `52273`, `52280`, and the IRIS for Health AI Hub Community image, build `2027.1.0AI.109.0`, from the EAP portal.
 
@@ -167,9 +198,21 @@ Each case is one batch of 30 `ORU^R01` messages (C06: 80) in `cases/`. The expec
 
 More cases run only in LIVE: 5 blind cases in `cases/blind/` and the specimen pair in `cases/pair/`.
 
-## Other IRIS technologies
+## Contest technology bonuses
 
-Interoperability production with BPL ([`Production.cls`](src/InteropOps/Production.cls)), Workflow with role `IOA-Reviewers`, a custom outbound adapter ([`ReviewerNotify.cls`](src/InteropOps/Adapter/ReviewerNotify.cls)), lookup table `IOA.LabCodeMap`, Embedded Python ([`Py/Ucum.cls`](src/InteropOps/Py/Ucum.cls)), Vector Search ([`KB/`](src/InteropOps/KB/)), .NET PEX ([`pex/`](pex/README.md)), Docker and IPM ([`module.xml`](module.xml); `zpm "load /path/to/repo"`, then `IOA_DEMO=1` only if you want the demo page).
+| Bonus | Where | What it does here |
+|---|---|---|
+| Production Extension (PEX) | [`pex/`](pex/README.md) | .NET (NHapi) business operation: a second HL7 `ORU^R01` check before the agent |
+| Workflow Engine | [`Workflow/Operation.cls`](src/InteropOps/Workflow/Operation.cls) | Review task in the Workflow Inbox for role `IOA-Reviewers` |
+| Custom Adapter | [`Adapter/ReviewerNotify.cls`](src/InteropOps/Adapter/ReviewerNotify.cls) | Outbound adapter: webhook POST for each new review task |
+| Embedded Python | [`Py/Ucum.cls`](src/InteropOps/Py/Ucum.cls) | UCUM unit check (OBX-6 against the expected unit) |
+| Vector Search | [`KB/`](src/InteropOps/KB/) | The 3 most similar past incidents go to the agent as evidence |
+| Docker container | [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml) | `./run.sh` builds and starts IRIS in Docker |
+| IPM package | [`module.xml`](module.xml) | `zpm "load /path/to/repo"`, then `IOA_DEMO=1` only if you want the demo page. Not published in the IPM registry yet |
+| Online demo | <https://ioa.antonyartsev.com/demo/> | LIVE model calls with a daily USD limit, not a static recording |
+| Community Opportunity idea | [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854) | Anomaly detection for an interoperability feed: the agent finds and explains the change, the production checks the fix |
+
+The production also uses BPL, DTL, the lookup table `IOA.LabCodeMap` and Visual Trace.
 
 ## Limitations
 

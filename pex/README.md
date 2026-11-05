@@ -10,7 +10,7 @@ the IRIS .NET SDK of the image, stage `dotnetrt` (dotnet/runtime:8.0) supplies t
 
 | | |
 |---|---|
-| Base image | `irishealth-aihub:2026.3.0AI.154.0` (aarch64, Ubuntu 24.04) |
+| Base image | `irishealth-aihub:2027.1.0AI.109.0` (`ARG IMAGE` in the main [`Dockerfile`](../Dockerfile)) |
 | .NET | `mcr.microsoft.com/dotnet/runtime:8.0` (linux-arm64) copied into `/usr/share/dotnet`; DLLs built in `mcr.microsoft.com/dotnet/sdk:8.0` |
 | IRIS .NET SDK | `/usr/irissys/dev/dotnet/bin/{net8.0,net9.0,net10.0}/` (`InterSystems.Data.GatewayArm`, `IRISClient.dll`, `InterSystems.Data.Utils.dll`) |
 
