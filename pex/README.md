@@ -2,6 +2,7 @@
 
 A C# PEX Business Operation that runs in the main production as agent evidence:
 `PexHl7CheckBP` (`PexHl7.CheckProcess`) -> `PexHl7Check` (`EnsLib.PEX.BusinessOperation`), one call per batch.
+It runs in the evidence step of `IOA.Process.Message`, before the agent; if .NET is unavailable, the step logs a warning and the case continues.
 
 The main [`Dockerfile`](../Dockerfile) builds it: stage `hl7build` (dotnet/sdk:8.0) publishes `dotnet/Hl7Check/` against
 the IRIS .NET SDK of the image, stage `dotnetrt` (dotnet/runtime:8.0) supplies the runtime. `iris.script` imports
@@ -34,7 +35,7 @@ Observation/Bundle on the message path to validate. No UCUM checks here, because
 - The finding format (`FindingsJson`) is a JSON array:
   `{"severity","path","code","message","source":"both|dotnet|iris","rule"}`.
 
-## Evidence (2026-10-27, separate spike stack, 30 msgs per fixture, ~0.3 s per fixture)
+## Evidence (2026-10-27, separate test stack, 30 msgs per fixture, ~0.3 s per fixture)
 | Fixture | IRIS invalid | Findings | Source |
 |---|---|---|---|
 | C10-mrn-pid2 | 30/30 | `PID3_MISSING` error x30, PID-3 | both (agree) |
@@ -46,7 +47,7 @@ Observation/Bundle on the message path to validate. No UCUM checks here, because
 ## Cost of the dependencies
 - The .NET runtime layer is +78.8 MB. The image layer `/home/irisowner/pex/hl7check` is 4.32 MB.
 - The `dotnet publish` step, including the NuGet restore, takes 5.9 s. NuGet restore needs network access at build time.
-- Runtime RAM: about 420 MiB for a container with a production and the gateway running (spike stack).
+- Runtime RAM: about 420 MiB for a container with a production and the gateway running (test stack).
 - Everything in `%gatewayExtraClasspaths`: InterSystems.Data.Utils.dll (from IRIS), Hl7Check.dll, NHapi.Base.dll,
   NHapi.Model.V251.dll, System.Configuration.ConfigurationManager.dll, System.Diagnostics.EventLog.dll,
   System.Security.Cryptography.ProtectedData.dll.

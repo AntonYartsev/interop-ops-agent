@@ -3,13 +3,13 @@
   "case_id":"C02",
   "match":{
     "msh10":"C02-MSG001",
-    "prompt_sha256":"757a4ce6c7132361b75b288e99a1f78472545f15ca86932be151a565386eccae"
+    "prompt_sha256":"901c470e58a2baa746dd39d7d2489a33b3d94a604361b15ee1b1d51ecb983331"
   },
   "recorded":{
     "profile":"openai",
     "model":"gpt-5.4-mini",
-    "build":"2026.3.0AI.154",
-    "at":"2026-10-27T10:46:00Z",
+    "build":"2027.1.0AI.109",
+    "at":"2026-11-05T10:05:55Z",
     "source":"live"
   },
   "turns":[
@@ -61,16 +61,16 @@
     },
     {
       "role":"assistant",
-      "content":"{\"action\":\"pass\",\"target\":null,\"reason\":\"PCT is not mapped in the receiving lookup, but the batch is structurally valid, has no critical results, and the only observed issue is an unmapped local code with no evidence that a specific existing LOINC mapping is unambiguous.\",\"evidence\":[\"0/30 messages had HL7 structure errors under both NHapi and IRIS\",\"CheckCriticalValues found 0 critical results; PLT low flags in 2 messages are clinical findings, not interface problems\",\"SearchLookup('PCT') returned no lookup match\",\"OBX-3 PCT (Procalcitonin) appears in all 30 messages with unit ng/mL, and the validation evidence classifies it as code_not_in_lookup\"],\"field_drift\":null}"
+      "content":"{\"action\":\"escalate\",\"target\":null,\"reason\":\"PCT is an unmapped local code in all 30 messages and SearchLookup returned no matching lookup entry, so there is no unambiguous mapping or unit conversion to apply; critical-value check found none.\",\"evidence\":[\"30/30 messages contain OBX-3 code PCT with unit ng/mL and ucum verdict code_not_in_lookup\",\"SearchLookup('PCT') returned no matches in the receiving lookup table\",\"CheckCriticalValues reported 0 critical results across the batch\",\"HL7 structure validation reported 0 errors in 30/30 messages\",\"Example message C02-MSG001 shows OBX-3 PCT^Procalcitonin^L with value 0.04 ng/mL and no structural drift\"],\"field_drift\":null}"
     }
   ],
   "expected":{
-    "decision":"pass",
-    "rationale_short":"PCT is not mapped in the receiving lookup, but the batch is structurally valid, has no critical results, and the only observed issue is an unmapped local code with no evidence that a specific existing LOINC mapping is unambiguous."
+    "decision":"escalate",
+    "rationale_short":"PCT is an unmapped local code in all 30 messages and SearchLookup returned no matching lookup entry, so there is no unambiguous mapping or unit conversion to apply; critical-value check found none."
   },
   "usage":{
-    "prompt_tokens":5411,
-    "completion_tokens":241
+    "prompt_tokens":5409,
+    "completion_tokens":248
   },
   "llm_calls":2
 }

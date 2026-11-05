@@ -1,6 +1,5 @@
-/// Copy of Spike5.ReplayGate.Evaluate (reference-free replay gate). Changes: batch/history summaries, lookup and DTL come from
-/// InteropOps.Rules.Data (computed from the received batch); the move_field / map_segment branches are dropped (no action in the
-/// closed list produces them). Patch shapes: {"type":"no_action"}, {"type":"lookup","change":{"action":"map_code",...}},
+/// Reference-free replay gate. Batch/history summaries, lookup and DTL come from InteropOps.Rules.Data (computed from the
+/// received batch). Patch shapes: {"type":"no_action"}, {"type":"lookup","change":{"action":"map_code",...}},
 /// {"type":"dtl","change":{"action":"convert_unit",...}}.
 Class InteropOps.Gate.Reference
 {
@@ -46,7 +45,8 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
                 Set tDStat = tDrift.%Get("code_stats").%Get(tFrom)
                 If '$ISOBJECT(tDStat) { Do tReasons.%Push("no_op_map_code_not_in_drift:" _ tFrom) Quit }
                 Set tExpUnit = tLookup.%Get(tTo).%Get("expected_unit")
-                If 'tDStat.%Get("units").%IsDefined(tExpUnit) { Do tReasons.%Push("unit_mismatch_on_mapped_code:" _ tFrom _ "!=" _ tExpUnit) Quit }
+                // every message of the batch must send the mapped code in the expected unit, not just one of them
+                If ..OtherUnits(tDStat.%Get("units"), tExpUnit) '= "" { Do tReasons.%Push("unit_mismatch_on_mapped_code:" _ tFrom _ "!=" _ tExpUnit) Quit }
                 Set tHMed = ..HistMedian(tHist, tTo)
                 Set tDMed = +tDStat.%Get("median")
                 If (tHMed > 0) && (($ZABS(tDMed - tHMed) / tHMed) > ..#MEDIANTOLERANCE) { Do tReasons.%Push("distribution_mismatch_on_mapped_code:" _ tFrom _ "->" _ tTo) Quit }
@@ -57,6 +57,7 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
             Set tCode = $ZCONVERT($ZSTRIP(cObj.%Get("code"), "<>W"), "U")
             Set tFactor = +cObj.%Get("factor")
             Set tFromU = cObj.%Get("from_unit")
+            Set tConvFrom = tFromU
             Do {
                 If 'tLookup.%IsDefined(tCode) || (tFactor <= 0) { Do tReasons.%Push("invalid_convert_unit:" _ tCode) Quit }
                 If $ZCONVERT(tFromU, "L") = $ZCONVERT(tLookup.%Get(tCode).%Get("expected_unit"), "L") {
@@ -77,10 +78,11 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
 
     If (tType '= "no_action") && (tType '= "none") && ('tChangedSomething) Do tReasons.%Push("no_op_patch")
 
-    // No unresolved anomaly may remain in the batch
+    // No unresolved anomaly may remain in ANY message of the batch
+    Set tTotal = ##class(InteropOps.Rules.Data).BatchCount(pCaseId)
     Set tReqIter = tDrift.%Get("required_field_stats").%GetIterator()
     While tReqIter.%GetNext(.rName, .rInfo) {
-        If +rInfo.%Get("source_non_empty") = 0 Do tReasons.%Push("unresolved_required_field:" _ rName)
+        If +rInfo.%Get("source_non_empty") < tTotal Do tReasons.%Push("unresolved_required_field:" _ rName _ ":" _ (tTotal - rInfo.%Get("source_non_empty")) _ "/" _ tTotal)
     }
     Set tZIter = tDrift.%Get("non_standard_segments").%GetIterator()
     While tZIter.%GetNext(.zName, .zInfo) { Do tReasons.%Push("unresolved_segment:" _ zName) }
@@ -88,8 +90,15 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
     While tCIter.%GetNext(.cName, .cInfo) {
         If 'tLookup.%IsDefined(cName) {
             If 'tMappedUnknownCodes.%IsDefined(cName) Do tReasons.%Push("unresolved_unmapped_code:" _ cName)
-        } ElseIf 'tConvertedCodes.%IsDefined(cName) {
-            If 'cInfo.%Get("units").%IsDefined(tLookup.%Get(cName).%Get("expected_unit")) Do tReasons.%Push("unresolved_unit_mismatch:" _ cName)
+        } ElseIf tConvertedCodes.%IsDefined(cName) {
+            // a converted code may arrive only in the converted unit or already in the expected unit
+            Set tOther = ..OtherUnits(cInfo.%Get("units"), tLookup.%Get(cName).%Get("expected_unit"), $GET(tConvFrom))
+            If tOther '= "" Do tReasons.%Push("unresolved_unit_mismatch:" _ cName _ ":" _ tOther)
+        } Else {
+            Set tExp = tLookup.%Get(cName).%Get("expected_unit"), tOther = ..OtherUnits(cInfo.%Get("units"), tExp)
+            // a unit that differs from the expected unit only in letter case (mg/dl for mg/dL) is reported apart,
+            // so that "pass" may accept it (Gate.Replay) when the value distribution is unchanged
+            If tOther '= "" Do tReasons.%Push($SELECT(..OtherUnits(cInfo.%Get("units"), $ZCONVERT(tExp, "L"), "", 1) = "": "unit_spelling_variant:", 1: "unresolved_unit_mismatch:") _ cName _ ":" _ tOther)
             Set tHMed = ..HistMedian(tHist, cName)
             Set tDMed = +cInfo.%Get("median")
             If (tHMed > 0) && (($ZABS(tDMed - tHMed) / tHMed) > ..#MEDIANTOLERANCE) Do tReasons.%Push("unresolved_distribution_shift:" _ cName)
@@ -107,6 +116,18 @@ ClassMethod Evaluate(pCaseId As %String, pPatch As %DynamicObject) As %DynamicOb
     }
 }
 
+
+/// Units in pUnits (unit -> count) other than pExpected and pAlso, comma-separated ("" if none). pNoCase: compare lower case.
+ClassMethod OtherUnits(pUnits As %DynamicObject, pExpected As %String, pAlso As %String = "", pNoCase As %Boolean = 0) As %String
+{
+    Set tOut = "", tIt = pUnits.%GetIterator()
+    While tIt.%GetNext(.tU) {
+        Set tCmp = $SELECT(pNoCase: $ZCONVERT(tU, "L"), 1: tU)
+        Continue:(tCmp=pExpected)||((pAlso'="")&&(tCmp=pAlso))
+        Set tOut = tOut _ $SELECT(tOut = "": "", 1: ",") _ tU
+    }
+    Return tOut
+}
 
 /// Median of a code in the history summary; 0 when the code has no history (new local codes such as SOD/HB)
 ClassMethod HistMedian(pHist As %DynamicObject, pCode As %String) As %Numeric

@@ -13,28 +13,28 @@
  "optional_target_fields": {},
  "ucum_conversions": [
   {
-   "canonical_code": "2345-7",
+   "canonical_code": "14749-6",
    "from_unit": "mmol/L",
    "to_unit": "mg/dL",
    "factor": 18.0,
    "note": "Molar to mass conversion for Glucose (MW 180.16 g/mol)"
   },
   {
-   "canonical_code": "2345-7",
+   "canonical_code": "14749-6",
    "from_unit": "mg/dL",
    "to_unit": "mmol/L",
    "factor": 0.0555,
    "note": "Mass to molar conversion for Glucose"
   },
   {
-   "canonical_code": "2160-0",
+   "canonical_code": "14682-9",
    "from_unit": "umol/L",
    "to_unit": "mg/dL",
    "factor": 0.01131,
    "note": "Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)"
   },
   {
-   "canonical_code": "2160-0",
+   "canonical_code": "14682-9",
    "from_unit": "mg/dL",
    "to_unit": "umol/L",
    "factor": 88.4,

@@ -1,4 +1,4 @@
-/// Agent step result (fields from SpikeV2.Msg.AgentResponse + V21 + provider kind / replay info)
+/// Agent step result (decision, validity, errors, usage, provider kind / replay info)
 Class InteropOps.Msg.AgentResponse Extends Ens.Response
 {
 

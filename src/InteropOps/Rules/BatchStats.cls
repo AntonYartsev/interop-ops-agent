@@ -1,5 +1,4 @@
-/// ObjectScript port of summarize() in spike-v2 generate.py: per-batch statistics computed from the received messages
-/// (the spike read them precomputed from tool_cache.json).
+/// Per-batch statistics computed from the received messages.
 Class InteropOps.Rules.BatchStats
 {
 

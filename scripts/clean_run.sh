@@ -126,6 +126,8 @@ MODE="$(sed -n 's/^Mode: \([A-Z]*\) (from Decision rows.*/\1/p' "$DEMO_LOG" | ta
 CALLS="$(sed -n 's/^Mode: .*LLM calls: \([0-9]*\).*/\1/p' "$DEMO_LOG" | tail -n 1)"
 grep -q '^CHECK: OK' "${LOG_DIR}/check.log" || fail check "CHECK: OK missing; log ${LOG_DIR}/check.log"
 grep -q '^SMOKE_GENERIC: OK' "${LOG_DIR}/smoke.log" || fail smoke "SMOKE_GENERIC: OK missing; log ${LOG_DIR}/smoke.log"
+case "$SCORE" in ""|0/*) fail demo "score ${SCORE:-?} (no score line)";; esac
+[ "${SCORE%/*}" = "${SCORE#*/}" ] || fail demo "score ${SCORE} (expected all cases correct)"
 [ "$MODE" = "REPLAY" ] || fail demo "mode ${MODE:-?} (expected REPLAY)"
 [ "${CALLS:-x}" = "0" ] || fail demo "llm_calls ${CALLS:-?} (expected 0)"
 echo "Steps: ${TIMES}"

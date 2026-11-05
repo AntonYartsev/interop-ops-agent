@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Score Decision.ReportJSON output against cases/expected.json (prereg rules: final action after gate equals truth;
 patch_mapping code+LOINC equal; convert_unit code equal and multiplier within 0.25%; quarantine MSH-10 equal;
-C10 escalate only with the Evidence array naming PID-2 and 30/30). Cross-checked against the spike scorer by scripts/test_score.py. Reads report JSON from stdin. Never crashes on partial data."""
+C10 escalate only with the Evidence array naming PID-2 and 30/30). Cross-checked against a frozen reference scorer by scripts/test_score.py. Reads report JSON from stdin. Never crashes on partial data.
+A REPLAY row whose cassette no longer matches (prompt hash differs or a replayed tool result changed) is DRIFT, not OK:
+the recorded answer was given for other evidence. Exit 0 only if every scored case is OK."""
 import json, os, re, sys
 
 WEB = os.environ.get("WEB_PORT", "52273")
@@ -31,9 +33,25 @@ def parse_target(t):
         return {"code": m.group(1), "loinc": m.group(2)}
     return {"raw": s, "code": s.split("/")[0].strip() if s else ""}
 
+def drift(r):
+    """Reason text if the row replayed a cassette that does not match the current prompt or tool results, else ''."""
+    gd = g(r, "gateDetail")
+    cas = ((gd.get("agent") or {}).get("cassette") or {}) if isinstance(gd, dict) else {}
+    if cas.get("replay") != "hit":
+        return ""
+    why = []
+    if cas.get("prompt_match") in (0, False):
+        why.append("prompt hash differs")
+    if int(cas.get("tool_results_changed") or 0) > 0:
+        why.append(f"{cas['tool_results_changed']} tool results changed")
+    return ", ".join(why)
+
 def judge(cid, exp, r):
     if not r:
         return "MISSING", "no decision row"
+    d = drift(r)
+    if d:
+        return "DRIFT", "cassette out of date: " + d
     status = str(g(r, "finalStatus")).lower()
     action = str(g(r, "action")).lower()
     if status == "pending_review":
@@ -139,7 +157,7 @@ def main():
     print(f"correct {ok}/{len(expected)}")
     if pending:
         print(f"pending review ({', '.join(pending)}): http://localhost:{WEB}/csp/irisapp/EnsPortal.WFWorklist.zen?$NAMESPACE={NS}")
-    return 0
+    return 0 if expected and ok == len(expected) else 1
 
 if __name__ == "__main__":
     sys.exit(main())

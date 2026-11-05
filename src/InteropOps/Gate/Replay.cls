@@ -1,8 +1,9 @@
-/// IOA.Gate.Replay: replay gate for a proposed decision (logic copied from SpikeV2.Gate; InteropOps.Gate.Reference = Spike5.ReplayGate).
-/// patch_mapping : reference map_code checks + history replay (no historical OBX uses the source code)
-/// convert_unit  : reference convert_unit checks + strict UCUM factor + history replay (no historical OBX has from_unit)
-/// quarantine    : >=2 copies, byte-identical copies, history replay, and reference no_action check on the batch
-/// pass          : not a patch; rejected (final escalate) if the reference no_action check finds an unmapped code or an empty required field
+/// IOA.Gate.Replay: replay gate for a proposed decision (batch checks in InteropOps.Gate.Reference).
+/// patch_mapping : reference map_code checks + history replay (DTL output of all 200 historical messages, with and without the patch: 0 may change)
+/// convert_unit  : reference convert_unit checks + strict UCUM factor + history replay (same DTL comparison with the proposed factor)
+/// quarantine    : >=2 copies, byte-identical copies, no historical message has that MSH-10, and reference no_action check on the batch
+/// pass          : not a patch; rejected (final escalate) if the reference no_action check finds ANY unresolved anomaly, except a unit
+///                 that differs from the expected unit only in letter case (unit_spelling_variant) with an unchanged value distribution
 /// escalate      : not a patch; the reference no_action result is recorded for information only
 /// A patch that does not pass the gate is not applied: final_action = escalate.
 Class InteropOps.Gate.Replay Extends Ens.BusinessOperation
@@ -38,7 +39,7 @@ ClassMethod Evaluate(pCaseId As %String, pDecision As %DynamicObject) As %Dynami
         // pass forwards the batch as is: an unmapped code or an empty required field would reach the feed unresolved
         Set tRef = ##class(InteropOps.Gate.Reference).Evaluate(pCaseId, {"type": "no_action"})
         Set tOut."reference_no_action_info" = tRef, tIt = tRef."gate_reasons".%GetIterator()
-        While tIt.%GetNext(, .tR) { Do:($EXTRACT(tR, 1, 25) = "unresolved_unmapped_code:")||($EXTRACT(tR, 1, 26) = "unresolved_required_field:") tReasons.%Push("pass_would_forward:" _ tR) }
+        While tIt.%GetNext(, .tR) { Do:$EXTRACT(tR, 1, 22)'="unit_spelling_variant:" tReasons.%Push("pass_would_forward:" _ tR) }
         Set tOut."gate_reasons" = tReasons
         Set tOut."gate_status" = $SELECT(tReasons.%Size() = 0: "NOT_A_PATCH", 1: "GATE_REJECTED")
         Set tOut."final_action" = $SELECT(tReasons.%Size() = 0: "pass", 1: "escalate")
@@ -51,9 +52,9 @@ ClassMethod Evaluate(pCaseId As %String, pDecision As %DynamicObject) As %Dynami
         Set tRef = ##class(InteropOps.Gate.Reference).Evaluate(pCaseId, {"type": "lookup", "change": {"action": "map_code", "from_code": (tT.code), "to_code": (tT.loinc)}})
         Set tOut.reference = tRef
         If tRef."gate_status" '= "GATE_PASSED" Do tReasons.%Push("reference:" _ tRef."gate_reasons".%ToJSON())
-        Set tHist = ..HistoryAffected("code", $ZCONVERT(tT.code, "U"))
-        Set tOut.checks."history_broken" = tHist
-        If tHist > 0 Do tReasons.%Push("history_broken:" _ tHist)
+        Set tHist = ..HistoryReplay(pDecision)
+        Set tOut.checks."history_replay" = tHist
+        If tHist.changed || (tHist."invalid_after" > tHist."invalid_before") Do tReasons.%Push("history_changed:" _ tHist.%ToJSON())
     } ElseIf tAction = "convert_unit" {
         Set tMult = ..Multiplier(tT)
         Set tOut.checks."effective_multiplier" = tMult
@@ -63,17 +64,17 @@ ClassMethod Evaluate(pCaseId As %String, pDecision As %DynamicObject) As %Dynami
         Set tUcum = ..StrictUCUM(tT.code, tT."from_unit", tT."to_unit", tMult)
         Set tOut.checks."strict_ucum" = tUcum
         If 'tUcum.ok Do tReasons.%Push("strict_ucum:" _ tUcum.reason)
-        Set tHist = ..HistoryAffected("unit", $ZCONVERT(tT.code, "U"), tT."from_unit")
-        Set tOut.checks."history_broken" = tHist
-        If tHist > 0 Do tReasons.%Push("history_broken:" _ tHist)
+        Set tHist = ..HistoryReplay(pDecision)
+        Set tOut.checks."history_replay" = tHist
+        If tHist.changed || (tHist."invalid_after" > tHist."invalid_before") Do tReasons.%Push("history_changed:" _ tHist.%ToJSON())
     } ElseIf tAction = "quarantine" {
         Set tMsh10 = ##class(InteropOps.Util.Ids).NormMSH10(tT.msh10)
         Set tQ = ..CheckQuarantine(pCaseId, tMsh10)
         Set tOut.checks.quarantine = tQ
         If 'tQ.ok Do tReasons.%Push("quarantine:" _ tQ.reason)
-        Set tHist = ..HistoryAffected("msh10", tMsh10)
-        Set tOut.checks."history_broken" = tHist
-        If tHist > 0 Do tReasons.%Push("history_broken:" _ tHist)
+        Set tHist = ..HistoryMSH10(tMsh10)
+        Set tOut.checks."history_same_msh10" = tHist
+        If tHist > 0 Do tReasons.%Push("history_same_msh10:" _ tHist)
         Set tRef = ##class(InteropOps.Gate.Reference).Evaluate(pCaseId, {"type": "no_action"})
         Set tOut.reference = tRef
         If tRef."gate_status" '= "GATE_PASSED" Do tReasons.%Push("reference_batch_not_clean:" _ tRef."gate_reasons".%ToJSON())
@@ -91,7 +92,7 @@ ClassMethod Summary(pGate As %DynamicObject) As %String
 {
     Set tS = pGate."gate_status" _ " final=" _ pGate."final_action"
     If $ISOBJECT(pGate."gate_reasons") && pGate."gate_reasons".%Size() Set tS = tS _ " reasons=" _ pGate."gate_reasons".%ToJSON()
-    If $ISOBJECT(pGate.checks) && pGate.checks.%IsDefined("history_broken") Set tS = tS _ " history_replay=" _ pGate.checks."history_broken" _ "/" _ ##class(InteropOps.Rules.Data).HistoryCount() _ " broken"
+    If $ISOBJECT(pGate.checks."history_replay") Set tS = tS _ " history_replay=" _ pGate.checks."history_replay".changed _ "/" _ pGate.checks."history_replay".total _ " changed"
     If $ISOBJECT(pGate.checks."strict_ucum") Set tS = tS _ " ucum=" _ pGate.checks."strict_ucum".%ToJSON()
     If $ISOBJECT(pGate.checks.quarantine) Set tS = tS _ " copies=" _ pGate.checks.quarantine.copies
     Return tS
@@ -122,23 +123,40 @@ ClassMethod StrictUCUM(pCode As %String, pFrom As %String, pTo As %String, pMult
     Return {"ok": 0, "reason": ("no_ucum_entry:" _ pFrom _ "->" _ pTo)}
 }
 
-/// Replay the patch rule over the historical messages; return how many messages it would change.
-ClassMethod HistoryAffected(pKind As %String, pKey As %String, pUnit As %String = "") As %Integer
+/// History replay of a patch: run the DTL over every historical message twice, with the current configuration and with the
+/// proposed patch (lookup entry or unit factor passed in aux, nothing is written). changed = messages whose DTL output differs;
+/// invalid_before / invalid_after = messages that fail LabToCanonical.CheckMessage. A safe patch for a new sender change has changed = 0.
+ClassMethod HistoryReplay(pDecision As %DynamicObject) As %DynamicObject
+{
+    Set tT = pDecision.target, tCode = $ZCONVERT(tT.code, "U")
+    Set tBase("lookup") = ##class(InteropOps.Rules.Data).Lookup()
+    Set tPatch("lookup") = ##class(InteropOps.Rules.Data).Lookup()
+    If pDecision.action = "patch_mapping" {
+        Set tMeta = {"canonical_code": (tT.loinc)}, tIt = tBase("lookup").%GetIterator()
+        While tIt.%GetNext(, .tM) { If tM."canonical_code" = tT.loinc Set tMeta = tM Quit }
+        Do tPatch("lookup").%Set(tCode, tMeta)
+    } Else {
+        Set tPatch("factor", tCode, tT."from_unit") = ..Multiplier(tT)
+    }
+    Set (tChanged, tBadBefore, tBadAfter) = 0, tN = ##class(InteropOps.Rules.Data).HistoryCount()
+    For i = 1:1:tN {
+        Set tIn = ##class(EnsLib.HL7.Message).ImportFromString(##class(InteropOps.Rules.Data).HistoryRaw(i), .tSC)
+        $$$ThrowOnError(tSC)
+        $$$ThrowOnError(##class(InteropOps.Rules.LabToCanonical).Transform(tIn, .tOutB, .tBase))
+        $$$ThrowOnError(##class(InteropOps.Rules.LabToCanonical).Transform(tIn, .tOutP, .tPatch))
+        Set tChanged = tChanged + (tOutB.OutputToString() '= tOutP.OutputToString())
+        Set tBadBefore = tBadBefore + '##class(InteropOps.Rules.LabToCanonical).CheckMessage(tIn, .tBase).valid
+        Set tBadAfter = tBadAfter + '##class(InteropOps.Rules.LabToCanonical).CheckMessage(tIn, .tPatch).valid
+    }
+    Return {"total": (tN), "changed": (tChanged), "invalid_before": (tBadBefore), "invalid_after": (tBadAfter)}
+}
+
+/// Historical messages with this MSH-10 (a quarantine of that id would also hold them)
+ClassMethod HistoryMSH10(pKey As %String) As %Integer
 {
     Set tN = 0
     For i = 1:1:##class(InteropOps.Rules.Data).HistoryCount() {
-        Set tRaw = ##class(InteropOps.Rules.Data).HistoryRaw(i)
-        If pKind = "msh10" {
-            Set tN = tN + (##class(InteropOps.Util.Ids).NormMSH10(##class(InteropOps.Rules.Data).MSH10(tRaw)) = pKey)
-            Continue
-        }
-        For s = 1:1:$LENGTH(tRaw, $CHAR(13)) {
-            Set tSeg = $PIECE(tRaw, $CHAR(13), s)
-            Continue:$PIECE(tSeg, "|", 1)'="OBX"
-            Set tCode = $ZCONVERT($PIECE($PIECE(tSeg, "|", 4), "^", 1), "U")
-            If (pKind = "code") && (tCode = pKey) Set tN = tN + 1 Quit
-            If (pKind = "unit") && (tCode = pKey) && ($PIECE(tSeg, "|", 7) = pUnit) Set tN = tN + 1 Quit
-        }
+        Set tN = tN + (##class(InteropOps.Util.Ids).NormMSH10(##class(InteropOps.Rules.Data).MSH10(##class(InteropOps.Rules.Data).HistoryRaw(i))) = pKey)
     }
     Return tN
 }

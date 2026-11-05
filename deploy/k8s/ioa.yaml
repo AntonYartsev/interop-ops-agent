@@ -1,5 +1,4 @@
-# Online demo on k3s: one IRIS pod on node-bg, only /demo/ is public (Traefik on node-ru + cert-manager).
-# node-bg (AMD EPYC 7K62, AVX2) reaches openrouter.ai directly: no proxy.
+# Online demo on k3s: one IRIS pod, only /demo/ is public (Traefik + cert-manager).
 # Secret ioa-env is created from the repo .env (see README.md), it is not in this file.
 apiVersion: v1
 kind: Namespace
@@ -12,7 +11,7 @@ metadata:
   name: ioa-cpf
   namespace: ioa
 data:
-  # Small fixed buffers: node-ru has 3.8 GB RAM, shared with other apps. Auto sizing gave 920 MiB RSS on a 7.8 GB host.
+  # Small fixed buffers: the node is shared with other apps. Auto sizing gave 920 MiB RSS on a 7.8 GB host.
   merge.cpf: |
     [config]
     globals=0,0,64,0,0,0
@@ -33,16 +32,16 @@ spec:
     metadata:
       labels: {app: iris}
     spec:
-      # IRIS 2026.3 needs AVX2 (109 not checked on node-us): node-us (Xeon E5-2697 v2) has none. node-bg has AVX2 and a non-RU IP for OpenRouter.
+      # IRIS needs a CPU with AVX2: label such a node with ioa/iris=true (README.md, step 5).
       nodeSelector:
-        kubernetes.io/hostname: node-bg
-      # Public resolvers: LLM calls do not depend on CoreDNS (node-ru). The pod needs no cluster service names.
+        ioa/iris: "true"
+      # Public resolvers: LLM calls do not depend on the cluster DNS. The pod needs no cluster service names.
       dnsPolicy: None
       dnsConfig:
         nameservers: [1.1.1.1, 8.8.8.8]
       containers:
         - name: iris
-          image: ioa-k8s:2
+          image: ioa-k8s:3
           imagePullPolicy: Never
           # Same setup step as run.sh: compile, env -> ^IOA.Config, reviewer, /demo web app, daily reset, start.
           args:
@@ -54,6 +53,7 @@ spec:
             - {name: ISC_CPF_MERGE_FILE, value: /cpf/merge.cpf}
             # LIVE via OpenRouter; spend per day stays under IOA_MAX_USD (default 0.50), reset daily.
             - {name: IOA_LIVE, value: "1"}
+            - {name: IOA_DEMO, value: "1"}
             - {name: LLM_PROFILE, value: openrouter}
             - {name: LLM_MODEL, value: openai/gpt-6-luna}
             - {name: LLM_PRICE_IN_PER_M, value: "0.10"}

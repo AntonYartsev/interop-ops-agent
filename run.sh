@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-mkdir -p cases/in cases/archive   # gitignored runtime dirs; IOA.In.CaseFile needs both
+mkdir -p cases/in cases/archive cases/out cases/held   # gitignored runtime dirs; IOA.In.CaseFile needs in/archive, IOA.Deliver out/held
 
 CURRENT_STEP="initializing"
 on_error() {
@@ -127,7 +127,7 @@ fi
 # On Linux the bind-mounted repo belongs to the host user; the file service runs as irisowner (uid 51773)
 # and must read, delete and archive files here. Docker Desktop (Mac) maps ownership, so it needs nothing.
 if [ "$(uname -s)" = "Linux" ]; then
-  chmod a+rwx cases/in cases/archive
+  chmod a+rwx cases/in cases/archive cases/out cases/held
 fi
 
 # --- live_env_check (begin) ---

@@ -3,13 +3,13 @@
   "case_id":"C09",
   "match":{
     "msh10":"C09-MSG001",
-    "prompt_sha256":"1657455c28c8d36e237acc3c3147816aa8a2607d552bb16a37439887f75db685"
+    "prompt_sha256":"218fc3d2d91c52b886c9cb8b7876921257796dda4545b66a33e785c0d08dee04"
   },
   "recorded":{
     "profile":"openai",
     "model":"gpt-5.4-mini",
-    "build":"2026.3.0AI.154",
-    "at":"2026-10-27T10:46:16Z",
+    "build":"2027.1.0AI.109",
+    "at":"2026-11-05T10:06:05Z",
     "source":"live"
   },
   "turns":[
@@ -28,11 +28,6 @@
           }
         },
         {
-          "name":"GetUCUMTable",
-          "arguments":{
-          }
-        },
-        {
           "name":"GetValidationEvidence",
           "arguments":{
           }
@@ -48,10 +43,6 @@
           "content":"{\"matches\":[],\"query\":\"Q77\"}"
         },
         {
-          "name":"GetUCUMTable",
-          "content":"{\"ucum_conversions\":[{\"canonical_code\":\"2345-7\",\"factor\":18.0,\"from_unit\":\"mmol/L\",\"note\":\"Molar to mass conversion for Glucose (MW 180.16 g/mol)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2345-7\",\"factor\":0.0555,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Glucose\",\"to_unit\":\"mmol/L\"},{\"canonical_code\":\"2160-0\",\"factor\":0.01131,\"from_unit\":\"umol/L\",\"note\":\"Molar to mass conversion for Creatinine (MW 113.12 g/mol, divide by 88.4)\",\"to_unit\":\"mg/dL\"},{\"canonical_code\":\"2160-0\",\"factor\":88.4,\"from_unit\":\"mg/dL\",\"note\":\"Mass to molar conversion for Creatinine\",\"to_unit\":\"umol/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"g/L\",\"note\":\"Metric prefix conversion (grams per liter to grams per deciliter)\",\"to_unit\":\"g/dL\"},{\"canonical_code\":\"*\",\"factor\":10.0,\"from_unit\":\"g/dL\",\"note\":\"Metric prefix conversion (grams per deciliter to grams per liter)\",\"to_unit\":\"g/L\"},{\"canonical_code\":\"*\",\"factor\":0.1,\"from_unit\":\"mg/L\",\"note\":\"Metric prefix conversion (milligrams per liter to milligrams per deciliter)\",\"to_unit\":\"mg/dL\"}]}"
-        },
-        {
           "name":"GetValidationEvidence",
           "content":"{\"case_id\":\"C09\",\"hl7check\":{\"agree\":0,\"dotnet_only\":90,\"engine\":\"NHapi 3.2.3.0 / v2.5.1 model; IRIS valspec dm-zrny-x\",\"errors\":0,\"findings\":[{\"code\":\"OBX6_UNITS_MISSING\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"message\":\"Q77: numeric result without units\",\"path\":\"OBX[6]-6\",\"rule\":\"obx-rule\",\"severity\":\"warning\",\"source\":\"dotnet\"},{\"code\":\"OBX7_RANGE_MISSING\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"message\":\"Q77: numeric result without reference range; abnormal flag cannot be verified\",\"path\":\"OBX[6]-7\",\"rule\":\"obx-rule\",\"severity\":\"warning\",\"source\":\"dotnet\"},{\"code\":\"OBX3_NO_TEXT\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"message\":\"Q77: code has no display text (OBX-3.2); cannot be checked by name\",\"path\":\"OBX[6]-3\",\"rule\":\"obx-rule\",\"severity\":\"info\",\"source\":\"dotnet\"}],\"iris_invalid\":0,\"iris_only\":0,\"messages\":30,\"messages_with_errors\":0,\"status\":\"ok\",\"warnings\":60},\"kb\":{\"embedder\":\"local-hash-384-v1\",\"results\":[{\"score\":0.2374,\"slug\":\"kb-missing-units\",\"title\":\"Numeric result with empty OBX-6 units\"},{\"score\":0.2152,\"slug\":\"kb-new-code-after-upgrade\",\"title\":\"New local code after a sender LIS upgrade\"},{\"score\":0.2098,\"slug\":\"kb-hemoglobin-code\",\"title\":\"Hemoglobin sent under a new local code\"}],\"status\":\"ok\"},\"ucum\":{\"findings\":[{\"code\":\"Q77\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"expected_unit\":\"\",\"obx\":\"OBX[6]\",\"severity\":\"warning\",\"unit\":\"\",\"verdict\":\"code_not_in_lookup+unit_missing\"},{\"basis\":\"prefix\",\"code\":\"GLU\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"flags\":{\"H\":1,\"L\":1},\"obx\":\"OBX[1]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"NA\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[2]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"K\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"expected_unit\":\"mmol/L\",\"factor\":1,\"obx\":\"OBX[3]\",\"severity\":\"info\",\"unit\":\"mmol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"CREAT\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"expected_unit\":\"umol/L\",\"factor\":1,\"obx\":\"OBX[4]\",\"severity\":\"info\",\"unit\":\"umol/L\",\"verdict\":\"same_unit\"},{\"basis\":\"prefix\",\"code\":\"BUN\",\"count\":30,\"examples\":[\"C09-MSG001\",\"C09-MSG002\",\"C09-MSG003\"],\"expected_unit\":\"mg/dL\",\"factor\":1,\"flags\":{\"H\":1},\"obx\":\"OBX[5]\",\"severity\":\"info\",\"unit\":\"mg/dL\",\"verdict\":\"same_unit\"}],\"status\":\"ok\",\"summary\":\"UCUM: 180 OBX in 30 messages; 150 unit OK vs lookup, 30 need attention\"}}"
         }
@@ -59,16 +50,16 @@
     },
     {
       "role":"assistant",
-      "content":"{\"action\":\"escalate\",\"target\":null,\"reason\":\"Q77 is an unmapped new local code and the batch also has OBX-3.2 missing on all 30 messages, so a human needs to confirm whether this is a new analyte and where the display text/lookup should be added; no critical results were reported and the existing codes/units are fine.\",\"evidence\":[\"SearchLookup found no lookup entry for local code Q77\",\"Validation evidence shows OBX[6]-3 has no display text in 30/30 messages (example MSH-10 C09-MSG001)\",\"Validation evidence shows OBX[6]-6 units missing for Q77 in 30/30 messages (example MSH-10 C09-MSG001)\",\"CheckCriticalValues reported 0 critical results for the batch\",\"Existing analytes GLU, NA, K, CREAT, and BUN matched expected units and only showed non-interface abnormal flags\"],\"field_drift\":{\"field\":\"OBX-3.2\",\"found_in\":null,\"affected\":30,\"total\":30,\"share\":1}}"
+      "content":"{\"action\":\"escalate\",\"target\":null,\"reason\":\"Q77 is a new unmapped local code, but there is no lookup entry to safely patch and the messages also lack OBX-6 and OBX-7 for Q77, so this requires human review.\",\"evidence\":[\"30/30 messages have Q77 with no matching lookup entry\",\"OBX-6 is missing for Q77 in 30 messages (C09-MSG001..C09-MSG003 examples)\",\"OBX-7 reference range is missing for Q77 in 30 messages\",\"CheckCriticalValues found 0 critical results; GLU and BUN abnormal flags are clinical findings, not interface problems\"],\"field_drift\":{\"field\":\"OBX-6\",\"found_in\":null,\"affected\":30,\"total\":30,\"share\":1}}"
     }
   ],
   "expected":{
     "decision":"escalate",
-    "rationale_short":"Q77 is an unmapped new local code and the batch also has OBX-3.2 missing on all 30 messages, so a human needs to confirm whether this is a new analyte and where the display text/lookup should be added; no critical results were reported and the existing codes/units are fine."
+    "rationale_short":"Q77 is a new unmapped local code, but there is no lookup entry to safely patch and the messages also lack OBX-6 and OBX-7 for Q77, so this requires human review."
   },
   "usage":{
-    "prompt_tokens":5788,
-    "completion_tokens":303
+    "prompt_tokens":5396,
+    "completion_tokens":231
   },
   "llm_calls":2
 }

@@ -1,4 +1,4 @@
-/// Read-only agent tools (SpikeV2.AgentTools + SpikeV2.V21.AgentTools in one class). Every tool is scoped to the current
+/// Read-only agent tools. Every tool is scoped to the current
 /// case (%IOACaseId) or the current Interoperability session (%IOASessionId). No tool returns the full history or ground truth.
 /// No tracing code here: InteropOps.Agent.TraceAuditPolicy records each call.
 Class InteropOps.Agent.Tools Extends %AI.Tool

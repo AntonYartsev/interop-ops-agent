@@ -11,3 +11,5 @@ cases/in/*
 cases/archive/*
 docs
 deploy
+cases/out/*
+cases/held/*

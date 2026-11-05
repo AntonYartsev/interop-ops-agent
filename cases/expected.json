@@ -1,6 +1,6 @@
 {
   "synthetic": true,
-  "note": "SYNTHETIC. Derived from spike-v2 ground_truth.json; MSH-10 rewritten CNN_MSGnnn -> CNN-MSGnnn.",
+  "note": "SYNTHETIC. Expected outcome per case.",
   "criteria": {
     "multiplier_rel_tol": 0.0025,
     "correct": "final action == action; patch_mapping: code and loinc equal; convert_unit: code equal and multiplier within 0.25%; quarantine: msh10 equal; C10 escalate only if evidence contains 'PID-2' and matches evidence_regex"

@@ -44,7 +44,7 @@ ClassMethod SyncEnvToGlobal(Output pEnvMap) As %Status
 {
     do ..ReadDotEnv(.pEnvMap)
 
-    set nonSecretVars = $listbuild("LLM_PROFILE", "LLM_MODEL", "REPLAY", "IOA_LIVE", "IOA_RECORD", "IOA_CASES_IN", "IOA_REPLAY_DIR", "IOA_REVIEWER_USER", "IOA_AUTOAPPROVE")
+    set nonSecretVars = $listbuild("LLM_PROFILE", "LLM_MODEL", "REPLAY", "IOA_LIVE", "IOA_RECORD", "IOA_CASES_IN", "IOA_REPLAY_DIR", "IOA_REVIEWER_USER", "IOA_AUTOAPPROVE", "IOA_DEMO")
     set ptr = 0
     while $listnext(nonSecretVars, ptr, varName) {
         set val = $zstrip($SYSTEM.Util.GetEnviron(varName), "<>W")
@@ -276,16 +276,29 @@ ClassMethod EnsureReviewer() As %Status
     quit $$$OK
 }
 
-/// Idempotently ensure the judge demo web application /demo (InteropOps.Demo.REST, see README "Judge demo page").
+/// Idempotently ensure the demo web application /demo (InteropOps.Demo.REST).
 /// Unauthenticated access with exactly one application role, IOA-DemoWeb: Read on the namespace routine and globals
 /// databases, Use on %Service_EmbeddedPython (the local KB embedder), Use on IOA_DemoWrite and SQL SELECT on the four
 /// tables the page reads. No %Ens_*, portal, other service or %All rights; the page itself has no SQL/exec input.
 /// Writes (run a case, approve/reject its review task) only inside InteropOps.Demo.Write: the privileged routine
 /// application IOA.DemoWrite (type 4, routines of that class only, resource IOA_DemoWrite:U) adds role IOA-DemoWrite
 /// (Read/Write on the globals database, nothing else) for the critical section; see InteropOps.Demo.Write.
+/// The page lets any visitor run cases and approve or reject their review tasks, so it is installed only with env IOA_DEMO=1
+/// (docker-compose.yml and deploy/k8s set it; an IPM install does not). Without it an existing /demo application is disabled.
 ClassMethod EnsureDemoWebApp(pNamespace As %String = "IRISAPP") As %Status
 {
     set roleName = "IOA-DemoWeb", app = "/demo", sc = $$$OK
+    if ##class(InteropOps.Config.LLMConfig).GetVar("IOA_DEMO") '= "1" {
+        new $NAMESPACE
+        set $NAMESPACE = "%SYS"
+        if ##class(Security.Applications).Exists(app) {
+            kill aProps
+            set aProps("Enabled") = 0
+            set sc = ##class(Security.Applications).Modify(app, .aProps)
+        }
+        write "DEMO_PAGE=off (set IOA_DEMO=1 to install /demo)", !
+        quit sc
+    }
     set wRole = "IOA-DemoWrite", wApp = "IOA.DemoWrite", wRes = "IOA_DemoWrite", wClass = "InteropOps.Demo.Write"
     set tables = $listbuild("InteropOps_Data.Decision", "Ens.MessageHeader", "EnsLib_Workflow.TaskResponse", "InteropOps_KB.Entry")
     try {
@@ -321,11 +334,11 @@ ClassMethod EnsureDemoWebApp(pNamespace As %String = "IRISAPP") As %Status
             set resList = $select(resList = "": "", 1: resList _ ",") _ r _ ":" _ res(r)
         }
         if '##class(Security.Roles).Exists(roleName) {
-            set sc = ##class(Security.Roles).Create(roleName, "InteropOps judge demo page (/demo): read-only; writes via " _ wApp, resList)
+            set sc = ##class(Security.Roles).Create(roleName, "InteropOps demo page (/demo): read-only; writes via " _ wApp, resList)
         } else {
             kill rProps
             do ##class(Security.Roles).Get(roleName, .rProps)
-            set rProps("Resources") = resList, rProps("Description") = "InteropOps judge demo page (/demo): read-only; writes via " _ wApp
+            set rProps("Resources") = resList, rProps("Description") = "InteropOps demo page (/demo): read-only; writes via " _ wApp
             set sc = ##class(Security.Roles).Modify(roleName, .rProps)
         }
         quit:$$$ISERR(sc)
@@ -361,7 +374,7 @@ ClassMethod EnsureDemoWebApp(pNamespace As %String = "IRISAPP") As %Status
         if ##class(Security.Applications).Exists(app) do ##class(Security.Applications).Get(app, .aProps)
         set aProps("NameSpace") = pNamespace
         set aProps("DispatchClass") = "InteropOps.Demo.REST"
-        set aProps("Description") = "InteropOps judge demo page"
+        set aProps("Description") = "InteropOps demo page"
         set aProps("AutheEnabled") = 64
         set aProps("MatchRoles") = ":" _ roleName
         set aProps("Resource") = ""

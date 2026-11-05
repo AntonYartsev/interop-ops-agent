@@ -3,13 +3,13 @@
   "case_id":"C01",
   "match":{
     "msh10":"C01-MSG001",
-    "prompt_sha256":"d1bf6bbce478c273a85ff93206429d7f859228c9179982dba8d2143450c25bc5"
+    "prompt_sha256":"4d262b260a89df60dcfee2c3d077272626a6701ad25fad64d4ee81425349b8cd"
   },
   "recorded":{
     "profile":"openai",
     "model":"gpt-5.4-mini",
-    "build":"2026.3.0AI.154",
-    "at":"2026-10-27T10:45:56Z",
+    "build":"2027.1.0AI.109",
+    "at":"2026-11-05T10:05:53Z",
     "source":"live"
   },
   "turns":[
@@ -35,7 +35,7 @@
         {
           "name":"GetBatchMessages",
           "arguments":{
-            "limit":1,
+            "limit":2,
             "offset":0
           }
         }
@@ -55,22 +55,22 @@
         },
         {
           "name":"GetBatchMessages",
-          "content":"{\"case_id\":\"C01\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C01-MSG001|P|2.5.1\\nPID|1||MRN-101000^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1000||19500210|M\\nORC|RE|ORD-61000|LAB-91000||||||20261025080000\\nOBR|1|ORD-61000|LAB-91000|BMP^Basic Metabolic Panel^L|||20261025080000\\nOBX|1|NM|GLU^Glucose^L||5.2|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|SOD^Sodium, serum/plasma^L||138.1|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.22|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||73|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||13|mg/dL|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
+          "content":"{\"case_id\":\"C01\",\"messages\":[{\"index\":0,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080000||ORU^R01^ORU_R01|C01-MSG001|P|2.5.1\\nPID|1||MRN-101000^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1000||19500210|M\\nORC|RE|ORD-61000|LAB-91000||||||20261025080000\\nOBR|1|ORD-61000|LAB-91000|BMP^Basic Metabolic Panel^L|||20261025080000\\nOBX|1|NM|GLU^Glucose^L||5.2|mmol/L|3.9-5.8|N|||F\\nOBX|2|NM|SOD^Sodium, serum/plasma^L||138.1|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||4.22|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||73|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||13|mg/dL|7-20|N|||F\\n\"},{\"index\":1,\"raw\":\"MSH|^~\\\\&|LAB_LIS|REGIONAL_LAB|HOSP_EHR|MAIN_HOSP|20261025080200||ORU^R01^ORU_R01|C01-MSG002|P|2.5.1\\nPID|1||MRN-101001^^^REGIONAL_LAB^MR||SYNTHETIC^PATIENT1001||19510311|F\\nORC|RE|ORD-61001|LAB-91001||||||20261025080200\\nOBR|1|ORD-61001|LAB-91001|BMP^Basic Metabolic Panel^L|||20261025080200\\nOBX|1|NM|GLU^Glucose^L||5.9|mmol/L|3.9-5.8|H|||F\\nOBX|2|NM|SOD^Sodium, serum/plasma^L||139|mmol/L|135-145|N|||F\\nOBX|3|NM|K^Potassium^L||3.78|mmol/L|3.5-5.1|N|||F\\nOBX|4|NM|CREAT^Creatinine^L||79|umol/L|53-106|N|||F\\nOBX|5|NM|BUN^Urea nitrogen^L||17|mg/dL|7-20|N|||F\\n\"}],\"offset\":0,\"total_messages\":30}"
         }
       ]
     },
     {
       "role":"assistant",
-      "content":"{\"action\":\"patch_mapping\",\"target\":{\"code\":\"SOD\",\"loinc\":\"2951-2\"},\"reason\":\"SOD is an unmapped local code that matches the existing sodium mapping, and the incoming unit/value range align with the receiver's sodium entry; critical-value checking found no critical results.\",\"evidence\":[\"30/30 messages contain OBX-3 SOD with OBX-6 mmol/L and values in the sodium range\",\"Lookup for SOD returns existing sodium mapping local code NA -> LOINC 2951-2 with expected unit mmol/L and ref range 135-145\",\"Validation evidence shows SOD is code_not_in_lookup in 30 messages while HL7 structure checks passed with 0 errors\",\"CheckCriticalValues returned 0 critical results\"],\"field_drift\":null}"
+      "content":"{\"action\":\"patch_mapping\",\"target\":{\"code\":\"SOD\",\"loinc\":\"2951-2\"},\"reason\":\"The unknown local code SOD is unambiguously the sodium analyte already mapped as NA/LOINC 2951-2, with matching expected unit mmol/L and matching historical range/distribution across all 30 messages; one GLU result is flagged H but critical checks found no critical results.\",\"evidence\":[\"SearchLookup found SOD as Sodium [Moles/volume] in Serum or Plasma with local_code NA, LOINC 2951-2, expected_unit mmol/L, and ref_range 135-145.\",\"Validation evidence shows SOD appears in OBX[2] for 30 messages with unit mmol/L and verdict code_not_in_lookup; other OBX codes are same_unit.\",\"Critical-value check returned 0 critical results for the batch.\",\"Raw messages show SOD^Sodium, serum/plasma^L in OBX-3 with values around the historical sodium median (e.g. 138.1, 139) and unit mmol/L.\"],\"field_drift\":null}"
     }
   ],
   "expected":{
     "decision":"patch_mapping",
-    "rationale_short":"SOD is an unmapped local code that matches the existing sodium mapping, and the incoming unit/value range align with the receiver's sodium entry; critical-value checking found no critical results."
+    "rationale_short":"The unknown local code SOD is unambiguously the sodium analyte already mapped as NA/LOINC 2951-2, with matching expected unit mmol/L and matching historical range/distribution across all 30 messages; one GLU result is flagged H but critical checks found no critical results."
   },
   "usage":{
-    "prompt_tokens":5359,
-    "completion_tokens":243
+    "prompt_tokens":5673,
+    "completion_tokens":308
   },
   "llm_calls":2
 }

@@ -1,4 +1,4 @@
-/// Write path of the judge demo page: the only code that writes for an anonymous /demo visitor.
+/// Write path of the demo page: the only code that writes for an anonymous /demo visitor.
 /// The web application role IOA-DemoWeb has the namespace data database READ only. Each entry point below raises
 /// $ROLES with the privileged routine application IOA.DemoWrite (Security.Applications type 4: only routines of this
 /// class may call AddRoles for it, and the caller must hold resource IOA_DemoWrite:U, which only IOA-DemoWeb has).

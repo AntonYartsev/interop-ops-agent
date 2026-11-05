@@ -29,6 +29,8 @@ XData ProductionDefinition
   </Item>
   <Item Name="IOA.Reprocess" Category="InteropOps" ClassName="InteropOps.Lookup.Reprocess" PoolSize="1" Enabled="true" Foreground="false" Comment="leaf: resent messages after an approved patch (DTL + validity, no agent, no Decision)" LogTraceEvents="false" Schedule="">
   </Item>
+  <Item Name="IOA.Deliver" Category="InteropOps" ClassName="InteropOps.Out.Deliver" PoolSize="1" Enabled="true" Foreground="false" Comment="after the final decision: delivered messages to cases/out/, held messages to cases/held/" LogTraceEvents="false" Schedule="">
+  </Item>
   <Item Name="PexHl7CheckBP" Category="InteropOps,Evidence" ClassName="PexHl7.CheckProcess" PoolSize="1" Enabled="true" Foreground="false" Comment="evidence: IRIS EnsLib.HL7 validation + .NET NHapi second opinion (one PEX call per batch); soft-degrades to IRIS-only" LogTraceEvents="false" Schedule="">
     <Setting Target="Host" Name="TargetConfigName">PexHl7Check</Setting>
     <Setting Target="Host" Name="IrisValSpec">dm-zrny-x</Setting>

@@ -80,6 +80,12 @@ ClassMethod BatchRaw(pCaseId As %String, pN As %Integer) As %String
     Return $GET(^IOA.Batch(pCaseId, pN))
 }
 
+/// SHA-256 (hex) of the stored batch, written by the BPL at ingest: ^IOA.Batch(caseId) = sha
+ClassMethod BatchSHA(pCaseId As %String) As %String
+{
+    Return $GET(^IOA.Batch(pCaseId))
+}
+
 /// Summary of the current batch (same shape as history summary)
 ClassMethod BatchSummary(pCaseId As %String) As %DynamicObject
 {

@@ -26,10 +26,13 @@ services:
       - IOA_REVIEWER_USER=${IOA_REVIEWER_USER:-reviewer}
       - IOA_NOTIFY_URL=${IOA_NOTIFY_URL:-}
       - IOA_REVIEWER_PASSWORD=${IOA_REVIEWER_PASSWORD:-}
+      # /demo page: anonymous visitors can run cases and approve/reject their tasks. Synthetic stand only; 0 disables it.
+      - IOA_DEMO=${IOA_DEMO:-1}
+    # localhost only: the image has the default _SYSTEM / SYS login. IRIS_BIND=0.0.0.0 publishes on all interfaces.
     ports:
-      - "${IRIS_PORT_SUPER:-51272}:1972"
-      - "${IRIS_PORT_WEB:-52273}:52773"
-      - "${IRIS_PORT_AUX:-52280}:8080"
+      - "${IRIS_BIND:-127.0.0.1}:${IRIS_PORT_SUPER:-51272}:1972"
+      - "${IRIS_BIND:-127.0.0.1}:${IRIS_PORT_WEB:-52273}:52773"
+      - "${IRIS_BIND:-127.0.0.1}:${IRIS_PORT_AUX:-52280}:8080"
     volumes:
       - ./:/home/irisowner/dev
       - ./:/irisdev/app

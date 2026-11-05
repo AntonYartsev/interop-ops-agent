@@ -1,6 +1,6 @@
-/// Rules (copy of SpikeV2.Rules.DecideA), run on the summary of the received batch. In this order:
+/// Rules, run on the summary of the received batch. In this order:
 /// 1. an MSH-10 seen more than once AND all its copies byte-identical -> quarantine that MSH-10
-///    (change vs spike: copies that differ, e.g. a correction resend, are not quarantined by rules; the gate would reject it)
+///    (copies that differ, e.g. a correction resend, are not quarantined by rules; the gate would reject it)
 /// 2. exactly one anomaly in the ticket, and it is
 ///    a. unmapped_code with an OBX-3.4-6 LOINC alt code that exists in the lookup -> patch_mapping to that LOINC
 ///    b. unmapped_code whose description equals a lookup short_name or canonical_name -> patch_mapping

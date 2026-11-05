@@ -101,7 +101,8 @@ root on the server.
    have a cassette, so no API call is expected. On exit the added amount is subtracted again (`BUDGET_RESTORED ...`).
    Works with `--no-reset` too (the existing counter is kept and raised). With `--replay` the budget does not apply.
    Checked locally in REPLAY only: the flag sets the global, `OverUSD()` returns 1, and the value is restored on exit.
-   The LIVE run itself was not made (it needs the key). The unit-level proof is `LLMConfig.CheckSwitching()` test 16.
+   The LIVE run itself was not made (it needs the key). The unit-level proof is `LLMConfig.CheckSwitching()` test 16
+.
 4. Reset the counter afterwards: `$DC exec -T iris iris session IRIS -U IRISAPP 'kill ^IOA.Budget'`
 
 ## h) Rollback

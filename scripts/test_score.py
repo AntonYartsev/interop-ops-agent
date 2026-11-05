@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
-"""Cross-check scripts/score_demo.py against the spike's frozen scorer (score.py, prereg.md).
+"""Cross-check scripts/score_demo.py against a frozen reference scorer.
 
-Reads Agent.json and A.json (the spike's run results) from tests/fixtures/ (trimmed copies of
-spike-v2-message-path/results/, sha256 in tests/fixtures/README.md), converts every case into a row in
+Reads Agent.json and A.json (frozen run results with their reference scores) from tests/fixtures/ (sha256 in
+tests/fixtures/README.md), converts every case into a row in
 Decision.ReportJSON format (CaseId, MSH10 like C06-MSG031, Source, Action, Target, Factor, Reason, GateResult,
-GateDetail, Evidence, FinalStatus, ...), pipes the rows through score_demo.py and asserts the spike's numbers:
+GateDetail, Evidence, FinalStatus, ...), pipes the rows through score_demo.py and asserts the reference numbers:
 Agent 10/12, A 8/12. Both Target styles are checked: JSON object text and plain text ("SOD->2951-2").
-Usage: python3 scripts/test_score.py [--fixtures DIR | --spike SPIKE_DIR] [-v]
-  default: tests/fixtures/ (no spike repo needed). --fixtures DIR or env TEST_SCORE_FIXTURES: a directory with
-  Agent.json and A.json. --spike SPIKE_DIR: optional, read SPIKE_DIR/results/ instead (env SPIKE_DIR is used
-  only together with --spike, so a stale SPIKE_DIR never changes the default).
+Usage: python3 scripts/test_score.py [--fixtures DIR] [-v]
+  default: tests/fixtures/. --fixtures DIR or env TEST_SCORE_FIXTURES: a directory with Agent.json and A.json.
 Exit 0 if every check matches, 1 on mismatch, 2 if inputs are missing. Writes nothing, makes no LLM calls."""
 import json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXPECT = {"Agent.json": 10, "A.json": 8}
-# per-case misses printed by the spike's own score.py (run on a /tmp copy): same cases must miss here
-SPIKE_WRONG = {"Agent.json": {"C07", "C10"}, "A.json": {"C01", "C05", "C07", "C11"}}
+# per-case misses of the reference scorer: same cases must miss here
+REF_WRONG = {"Agent.json": {"C07", "C10"}, "A.json": {"C01", "C05", "C07", "C11"}}
 PATCHES = ("patch_mapping", "convert_unit", "quarantine")
 FINAL_STATUS = {"pass": "passed", "escalate": "escalated", "quarantine": "quarantined",
                 "patch_mapping": "applied", "convert_unit": "applied"}
 
 def msh(s):
-    """Spike MSH-10 C06_MSG031 -> ours C06-MSG031 (cases/expected.json rewrote the separator)."""
+    """Fixture MSH-10 C06_MSG031 -> ours C06-MSG031 (cases/expected.json rewrote the separator)."""
     return re.sub(r"\b(C\d\d)_(MSG\d+)\b", r"\1-\2", str(s))
 
 def fix(v):
@@ -77,7 +75,7 @@ def score(rows):
     return (int(m.group(1)) if m else -1), wrong, p.stdout + p.stderr
 
 def probes(run):
-    """Prereg edge cases where an earlier score_demo.py was looser than the spike scorer."""
+    """Prereg edge cases where an earlier score_demo.py was looser than the reference scorer."""
     base = {r["CaseId"]: r for r in (to_row(i, c, "", "json") for i, c in enumerate(run["cases"]))}
     out = []
     r = dict(base["C10"], Reason="PID-2 holds the MRN in 30/30 messages", GateDetail="PID-2 30/30")
@@ -94,10 +92,6 @@ def main(argv):
     src = os.environ.get("TEST_SCORE_FIXTURES") or os.path.join(ROOT, "tests", "fixtures")
     if "--fixtures" in argv:
         src = argv[argv.index("--fixtures") + 1]
-    if "--spike" in argv:
-        i = argv.index("--spike")
-        spike = argv[i + 1] if i + 1 < len(argv) and not argv[i + 1].startswith("-") else os.environ.get("SPIKE_DIR", "")
-        src = os.path.join(spike, "results")
     print(f"fixtures: {os.path.relpath(src, ROOT) if os.path.abspath(src).startswith(ROOT) else src}")
     verbose = "-v" in argv
     bad = 0
@@ -111,9 +105,9 @@ def main(argv):
         for style in ("json", "plain"):
             rows = [to_row(i, c, run.get("variant"), style) for i, c in enumerate(run["cases"])]
             got, wrong, out = score(rows)
-            ok = got == want and wrong == SPIKE_WRONG[name]
+            ok = got == want and wrong == REF_WRONG[name]
             bad += not ok
-            print(f"{'OK  ' if ok else 'FAIL'}  {name:<10} target={style:<5} score_demo {got}/12 miss {','.join(sorted(wrong)) or '-'}, spike score.py {want}/12 miss {','.join(sorted(SPIKE_WRONG[name]))}")
+            print(f"{'OK  ' if ok else 'FAIL'}  {name:<10} target={style:<5} score_demo {got}/12 miss {','.join(sorted(wrong)) or '-'}, reference {want}/12 miss {','.join(sorted(REF_WRONG[name]))}")
             if verbose or not ok:
                 print(out)
         if name == "Agent.json":
@@ -135,6 +129,17 @@ def main(argv):
                 print(f"{'OK  ' if ok else 'FAIL'}  mode header: {label}")
                 if not ok:
                     print(out)
+    # exit code: 1 unless every case is OK; a replayed cassette that drifted is DRIFT, not OK
+    exp = json.load(open(os.path.join(ROOT, "cases", "expected.json")))["cases"]
+    env = dict(os.environ, EXPECTED_MAP_FILE=os.path.join(ROOT, "cases", "expected.json"), SCORE_CASES="C06")
+    good = [{"CaseId": "C06", "Action": "quarantine", "Target": exp["C06"]["target"]["msh10"], "FinalStatus": "quarantined"}]
+    drifted = [dict(good[0], GateDetail={"agent": {"cassette": {"replay": "hit", "prompt_match": False, "tool_results_changed": 2}}})]
+    for label, rows, want_rc in (("empty input -> exit 1", [], 1), ("all OK -> exit 0", good, 0), ("cassette drift -> DRIFT, exit 1", drifted, 1)):
+        p = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "score_demo.py")], input=json.dumps(rows),
+                           capture_output=True, text=True, cwd=ROOT, env=dict(env, SCORE_CASES="" if not rows else "C06"))
+        ok = p.returncode == want_rc and ("DRIFT" in p.stdout) == ("drift" in label)
+        bad += not ok
+        print(f"{'OK  ' if ok else 'FAIL'}  exit code: {label} (rc={p.returncode})")
     print("TEST_SCORE: " + ("OK" if not bad else f"FAIL ({bad})"))
     return 1 if bad else 0
 

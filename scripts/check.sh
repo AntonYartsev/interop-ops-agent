@@ -26,6 +26,7 @@ printf '%s\n' \
   'write "MODE=",##class(InteropOps.Config.LLMConfig).Mode()," PROFILE=",##class(InteropOps.Config.LLMConfig).Profile(),!' \
   'do ##class(InteropOps.Config.LLMConfig).PrintStatus()' \
   'write "REPORT=",##class(%Dictionary.CompiledMethod).%ExistsId("InteropOps.Data.Decision||ReportJSON"),!' \
+  'do ##class(InteropOps.Gate.GateTest).Run()' \
   'halt' \
   | docker exec -i "$CONTAINER" iris session IRIS -U "$NS" >"$OUT" 2>&1
 val() { sed -n "s/^$1=//p" "$OUT" | tr -d '\r' | tail -n 1; }
@@ -94,6 +95,8 @@ elif [ -n "$KIND" ]; then
 fi
 
 [ "$(val REPORT)" = "1" ] && res OK "Decision.ReportJSON compiled" || res FAIL "Decision.ReportJSON missing (run ./scripts/reload.sh)"
+GT="$(val GATE_TEST)"
+[ "$GT" = "PASS" ] && res OK "gate/apply/DTL self-test (InteropOps.Gate.GateTest)" || res FAIL "gate/apply/DTL self-test: ${GT:-not run} (needs a demo.sh run first)"
 rm -f "$OUT"
 
 shopt -s nullglob

@@ -1,5 +1,4 @@
-/// Copy of Spike5.Triage.InspectScenario (deterministic anomaly ticket). Change: the batch / history summaries, lookup
-/// and baseline DTL are parameters (computed from the received batch) instead of tool_cache.json reads.
+/// Deterministic anomaly ticket. The batch / history summaries, lookup and baseline DTL are parameters (computed from the received batch).
 /// Contains no hardcoded test codes, segment names or field numbers.
 Class InteropOps.Rules.Triage
 {

@@ -1,0 +1,12 @@
+# The 12 REPLAY cassettes: schema ioa-replay/1 and secret scan (no IRIS image needed).
+name: cassettes
+on: [push, pull_request]
+jobs:
+  validate-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 scripts/validate_replay.py --require

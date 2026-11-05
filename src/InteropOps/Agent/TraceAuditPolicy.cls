@@ -1,6 +1,6 @@
 Include Ensemble
 
-/// Audit policy (copy of Spike5.TraceAuditPolicy): every agent tool call is sent to IOA.Agent.Tools, so it shows in
+/// Audit policy: every agent tool call is sent to IOA.Agent.Tools, so it shows in
 /// Visual Trace, and is kept in ^||IOAToolCalls(n) = {tool, arguments, duration_ms} / ^||IOAToolCalls(n, "result") for the
 /// cassette recorder. Build 154: in the Chat() path "arguments" is a JSON string; in a direct ToolMgr.ExecuteTool call it is
 /// missing, so InteropOps.Agent.ReplayProvider passes them in %IOAToolArgs.

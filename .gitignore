@@ -13,3 +13,8 @@ obj/
 *.tar
 *.tar.gz
 .DS_Store
+cases/out/*
+!cases/out/.gitkeep
+cases/held/*
+!cases/held/.gitkeep
+

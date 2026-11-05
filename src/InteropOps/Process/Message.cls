@@ -3,6 +3,7 @@
 /// FinalStatus: pass -> passed, quarantine -> quarantined, escalate (or gate rejected) -> escalated,
 /// gate-passed patch_mapping / convert_unit -> pending_review row, Inbox task (IOA.Workflow), then on Approve IOA.Lookup.Apply + a final row
 /// (applied, Source human / human:auto); on Reject a final row (rejected).
+/// After the final row IOA.Deliver writes delivered messages to cases/out/ and held messages to cases/held/.
 Class InteropOps.Process.Message Extends Ens.BusinessProcessBPL
 {
 
@@ -34,6 +35,13 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <parameters><parameter name='MAXLEN' value='' /></parameters>
 </property>
 <property name='TaskId' type='%String' />
+<property name='BatchSHA' type='%String' >
+<parameters><parameter name='MAXLEN' value='64' /></parameters>
+</property>
+<property name='FinalStatus' type='%String' />
+<property name='DeliveryJSON' type='%String' >
+<parameters><parameter name='MAXLEN' value='' /></parameters>
+</property>
 <property name='TaskAction' type='%String' />
 <property name='Stage' type='%String' />
 <property name='ApplyJSON' type='%String' >
@@ -54,7 +62,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <sequence>
 <code name='Ingest batch' >
 <![CDATA[ set context.CaseId=request.CaseId
- do ##class(InteropOps.Process.Message).Ingest(request) ]]>
+ set context.BatchSHA=##class(InteropOps.Process.Message).Ingest(request) ]]>
 </code>
 <code name='DTL LabToCanonical' >
 <![CDATA[ set context.DTLSummaryJSON=##class(InteropOps.Rules.LabToCanonical).RunBatch(request.CaseId).%ToJSON()
@@ -141,6 +149,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign name='Stage decision' property="context.Stage" value='"decision"' action="set" />
 <code name='Decision row' >
 <![CDATA[ $$$ThrowOnError(##class(InteropOps.Process.Message).RecordDecision(context, request, process.%SessionId, .tRow))
+ set context.FinalStatus=tRow.FinalStatus
  $$$LOGINFO("decision "_request.CaseId_": "_tRow.Action_" -> "_tRow.FinalStatus_" ("_context.Source_") gate="_context.GateSummary) ]]>
 </code>
 <if name='Needs human review?' condition='(context.FinalAction="patch_mapping")||(context.FinalAction="convert_unit")' >
@@ -163,6 +172,7 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign property="callrequest.CaseId" value='request.CaseId' action="set" />
 <assign property="callrequest.DecisionJSON" value='context.DecisionJSON' action="set" />
 <assign property="callrequest.TaskId" value='context.TaskId' action="set" />
+<assign property="callrequest.BatchSHA" value='context.BatchSHA' action="set" />
 </request>
 <response type='InteropOps.Msg.ApplyResponse' >
 <assign property="context.ApplyJSON" value='callresponse.ResultJSON' action="set" />
@@ -172,9 +182,25 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </if>
 <code name='Final decision row' >
 <![CDATA[ $$$ThrowOnError(##class(InteropOps.Process.Message).RecordHuman(context, request, process.%SessionId, .tRow))
+ set context.FinalStatus=tRow.FinalStatus
  if tRow.FinalStatus="none" { $$$LOGWARNING("task "_context.TaskId_" cancelled (action '"_context.TaskAction_"'): no final row, nothing applied") } else {
  $$$LOGINFO("human " _ request.CaseId _ ": " _ tRow.Action _ " -> " _ tRow.FinalStatus _ " (" _ tRow.Source _ ") task=" _ context.TaskId) } ]]>
 </code>
+</true>
+</if>
+<if name='Final decision?' condition='$case(context.FinalStatus,"passed":1,"applied":1,"quarantined":1,"escalated":1,"rejected":1,:0)' >
+<true>
+<assign name='Stage Deliver' property="context.Stage" value='"deliver"' action="set" />
+<call name='Deliver or hold' target='IOA.Deliver' async='0' >
+<request type='InteropOps.Msg.DeliverRequest' >
+<assign property="callrequest.CaseId" value='request.CaseId' action="set" />
+<assign property="callrequest.FinalStatus" value='context.FinalStatus' action="set" />
+<assign property="callrequest.HoldMSH10" value='$select(context.FinalStatus="quarantined":{}.%FromJSON(context.DecisionJSON).target.msh10,1:"")' action="set" />
+</request>
+<response type='Ens.StringResponse' >
+<assign property="context.DeliveryJSON" value='callresponse.StringValue' action="set" />
+</response>
+</call>
 </true>
 </if>
 </sequence>
@@ -190,14 +216,19 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 </process>
 }
 
-/// Store the raw messages of the case in ^IOA.Batch(caseId, n) for rules, gate and tools
-ClassMethod Ingest(pRequest As InteropOps.Msg.CaseRequest)
+/// Store the raw messages of the case in ^IOA.Batch(caseId, n) for rules, gate and tools; return the batch SHA-256
+ClassMethod Ingest(pRequest As InteropOps.Msg.CaseRequest) As %String
 {
-    Quit:pRequest.CaseId=""
+    Quit:pRequest.CaseId="" ""
     Kill ^IOA.Batch(pRequest.CaseId)
+    Set tAll = ""
     For i = 1:1:pRequest.Messages.Count() {
-        Set ^IOA.Batch(pRequest.CaseId, i) = $TRANSLATE(pRequest.Messages.GetAt(i).OutputToString(), $CHAR(10), "")
+        Set (tRaw, ^IOA.Batch(pRequest.CaseId, i)) = $TRANSLATE(pRequest.Messages.GetAt(i).OutputToString(), $CHAR(10), "")
+        Set tAll = $SYSTEM.Encryption.SHAHash(256, tAll _ tRaw)
     }
+    // batch identity: Apply checks it, so an approval never applies to a batch that was replaced while the task waited
+    Set ^IOA.Batch(pRequest.CaseId) = ##class(%xsd.hexBinary).LogicalToXSD(tAll)
+    Return ^IOA.Batch(pRequest.CaseId)
 }
 
 /// Agent response fields kept for the Decision row (GateDetail.agent)
@@ -256,7 +287,7 @@ ClassMethod RecordHuman(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.C
 /// Catch-all: no case ends without a final row. Escalated row, gateDetail.error_kind from the failed stage.
 ClassMethod RecordError(pContext As Ens.BP.Context, pRequest As InteropOps.Msg.CaseRequest, pSessionId As %Integer, pError As %String)
 {
-    Set tKind = $CASE(pContext.Stage, "agent": "agent_error", "gate": "gate_error", "workflow": "workflow_error", "apply": "apply_error", "decision": "decision_error", : "process_error")
+    Set tKind = $CASE(pContext.Stage, "agent": "agent_error", "gate": "gate_error", "workflow": "workflow_error", "apply": "apply_error", "decision": "decision_error", "deliver": "deliver_error", : "process_error")
     Set pError = ##class(InteropOps.Util.Redact).Text(pError)
     $$$LOGERROR("catch-all " _ pRequest.CaseId _ " " _ tKind _ ": " _ pError)
     Set tRow = {"CaseId": (pRequest.CaseId), "MSH10": (pRequest.FirstMSH10), "SessionId": (pSessionId), "Mode": (##class(InteropOps.Config.LLMConfig).Mode()),

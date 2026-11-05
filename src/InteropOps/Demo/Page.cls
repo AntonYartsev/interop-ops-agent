@@ -1,4 +1,4 @@
-/// Static assets of the judge demo page (served by InteropOps.Demo.REST at /demo/, /demo/app.css, /demo/app.js).
+/// Static assets of the demo page (served by InteropOps.Demo.REST at /demo/, /demo/app.css, /demo/app.js).
 /// Plain HTML/CSS/JS, no external CDN or font; all data comes from /demo/api/* and is inserted as text (no innerHTML).
 Class InteropOps.Demo.Page
 {

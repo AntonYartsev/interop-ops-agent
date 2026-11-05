@@ -1,0 +1,14 @@
+# Scorer matches a frozen reference scorer; exit codes and DRIFT detection (no IRIS image needed).
+name: scorer
+on: [push, pull_request]
+jobs:
+  test-score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 scripts/test_score.py
+      - name: Shell syntax
+        run: for f in run.sh scripts/*.sh tools/record/*.sh deploy/*.sh; do bash -n "$f"; done
