@@ -15,8 +15,6 @@ An IRIS Interoperability workflow where an AI Hub agent makes the decision: what
 
 <p align="center">
   <b><a href="https://ioa.antonyartsev.com/demo/">Online demo (no install)</a></b> ·
-  Demo video: TODO ·
-  Contest page: TODO ·
   Ideas Portal: <a href="https://ideas.intersystems.com/ideas/DPI-I-854">DPI-I-854: AI Log Analytics &amp; Predictive Anomaly Detection for Interoperability</a> (Community Opportunity)
 </p>
 
@@ -100,7 +98,7 @@ The model makes mistakes. The recordings in `replay/` show them, and the product
 
 ![C18 review task](images/review-card.png)
 
-To be honest about the numbers: on our 12 demo cases a rules-only baseline also scores 12/12, and on the whole-blood test the agent was no better than the rules. This is why the design does not trust the agent. The checks and the human do. We describe how we tested it (blind cases, the pre-registered specimen test, all LIVE runs) in a separate article: TODO.
+To be honest about the numbers: on our 12 demo cases a rules-only baseline also scores 12/12, and on the whole-blood test the agent was no better than the rules. This is why the design does not trust the agent. The checks and the human do. We tested it with blind cases, a pre-registered specimen test and LIVE runs.
 
 ## Quick start (REPLAY, no API key)
 
@@ -179,6 +177,7 @@ Interoperability production with BPL ([`Production.cls`](src/InteropOps/Producti
 - Tested on IRIS for Health Community AI Hub EAP `2027.1.0AI.109.0` on ARM64 and x64.
 - Delivery is two folders (`cases/out/`, `cases/held/`), not a real downstream system. Held messages wait for an engineer. There is no release step.
 - The checks cannot tell two tests apart if only the lab's text differs (for example whole blood and serum). For that, the human reviewer is the only safeguard.
+- An IPM install has no .NET runtime, so the .NET HL7 check is off and the agent's evidence differs from the recordings. There `demo.sh --replay` marks the 6 agent cases `DRIFT` (`correct 6/12`), although the decisions match the expected ones. Use `./run.sh` (Docker) for the recorded 12/12.
 - An approval is bound to the batch content (SHA-256 at ingest). If the same case id arrives again while the task waits, nothing is applied and the case is escalated.
 
 ## Commands

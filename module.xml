@@ -3,7 +3,7 @@
   <Document name="interop-ops-agent.ZPM">
     <Module>
       <Name>interop-ops-agent</Name>
-      <Version>0.2.0</Version>
+      <Version>0.2.1</Version>
       <Description>HL7 v2 lab-feed triage agent on InterSystems IRIS AI Hub (EAP): Interoperability production, deterministic gate, Workflow review, REPLAY cassettes, judge demo page /demo/. Synthetic data only.</Description>
       <Keywords>interoperability hl7 ai-hub agent workflow vector-search</Keywords>
       <Author>
