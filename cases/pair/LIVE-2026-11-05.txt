@@ -1,0 +1,16 @@
+# LIVE run of the pre-registered pair, 2026-11-05, build 2027.1.0AI.109, openai gpt-5.4-mini, auto-approve on
+# command: CASES_SRC=cases/pair EXPECTED_MAP_FILE=cases/pair/expected.json ./scripts/demo.sh --live   (after push of commit cf76663)
+Mode: LIVE (from Decision rows; LLM calls: 6)
+Case | Decision (action/target/factor)        | Src    | Final          | Expected       | Verdict | Visual Trace
+-----------------------------------------------------------------------------------------------------------------
+C18  | patch_mapping/SOD->2951-2/-            | auto   | applied        | escalate       | WRONG  (final patch_mapping != escalate)
+C19  | patch_mapping/KX->2823-3/-             | auto   | applied        | escalate       | WRONG  (final patch_mapping != escalate)
+C20  | patch_mapping/KX->2823-3/-             | agent  | escalated      | patch_mapping  | WRONG  (final escalate != patch_mapping)
+-----------------------------------------------------------------------------------------------------------------
+correct 0/3
+
+# Agent reason per case (Decision rows):
+C18: SOD is an unmapped local code that matches the existing Sodium lookup entry with the same expected unit and historical distribution, and there are no critical results or HL7 structural errors.
+C19: KX is an unknown local analyte code that matches the existing Potassium lookup entry, and the incoming unit/value pattern is consistent with that analyte; no critical results or structural errors were found.
+C20: KX is an unmapped local potassium code that matches the existing potassium lookup entry with the same analyte name, expected unit, and reference range; no critical-value interface issue is present.
+C20 gate: GATE_REJECTED history_regression:overwrote_existing_code:KX (the wrong C19 mapping KX->2823-3 was applied earlier in the same run)
