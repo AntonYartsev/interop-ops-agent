@@ -205,7 +205,7 @@ More cases run only in LIVE: 5 blind cases in `cases/blind/` and the specimen pa
 | Embedded Python | [`Py/Ucum.cls`](src/InteropOps/Py/Ucum.cls) | UCUM unit check (OBX-6 against the expected unit) |
 | Vector Search | [`KB/`](src/InteropOps/KB/) | The 3 most similar past incidents go to the agent as evidence |
 | Docker container | [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml) | `./run.sh` builds and starts IRIS in Docker |
-| IPM package | [`module.xml`](module.xml) | `zpm "load /path/to/repo"`, then `IOA_DEMO=1` only if you want the demo page. Not published in the IPM registry yet |
+| IPM package | [`module.xml`](module.xml) | `zpm "install interop-ops-agent"` from the IPM registry, or `zpm "load /path/to/repo"`. Set `IOA_DEMO=1` before the install only if you want the demo page |
 | Online demo | <https://ioa.antonyartsev.com/demo/> | LIVE model calls with a daily USD limit, not a static recording |
 | Community Opportunity idea | [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854) | Anomaly detection for an interoperability feed: the agent finds and explains the change, the production checks the fix |
 | Article on DC | [I built an AI agent for HL7 drift. Then 20 lines of rules matched it](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it) | The story of the project: killed ideas, the rules baseline, the specimen test the agent failed |
