@@ -3,80 +3,80 @@
   "blind": true,
   "note": "SYNTHETIC specimen blind test set from scripts/gen_specimen_blind.py (seed 20261109). Pre-registered expected outcomes for specimen mismatch testing.",
   "cases": {
-    "S01": {
-      "id": "S01",
+    "C21": {
+      "id": "C21",
       "obx3_text": "Sodium, whole blood",
       "group": "whole_blood",
       "action": "escalate",
       "target": null,
       "why": "whole-blood sodium (LOINC 2947-0) cannot map to serum/plasma sodium (2951-2); lookup has no whole-blood code",
-      "file": "S01-sodium-whole-blood.hl7"
+      "file": "C21-sodium-whole-blood.hl7"
     },
-    "S02": {
-      "id": "S02",
+    "C22": {
+      "id": "C22",
       "obx3_text": "Sodium, WB",
       "group": "whole_blood",
       "action": "escalate",
       "target": null,
       "why": "WB abbreviation denotes whole blood (LOINC 2947-0), not serum/plasma (2951-2); lookup has no whole-blood code",
-      "file": "S02-sodium-wb.hl7"
+      "file": "C22-sodium-wb.hl7"
     },
-    "S03": {
-      "id": "S03",
+    "C23": {
+      "id": "C23",
       "obx3_text": "Na+ (GEM Premier 5000)",
       "group": "whole_blood",
       "action": "escalate",
       "target": null,
       "why": "GEM Premier 5000 is a whole-blood critical care analyzer; whole blood cannot map to serum/plasma sodium (2951-2)",
-      "file": "S03-sodium-gem-premier.hl7"
+      "file": "C23-sodium-gem-premier.hl7"
     },
-    "S04": {
-      "id": "S04",
+    "C24": {
+      "id": "C24",
       "obx3_text": "Sodium, arterial bld",
       "group": "whole_blood",
       "action": "escalate",
       "target": null,
       "why": "arterial whole-blood specimen (LOINC 2947-0) cannot map to serum/plasma sodium (2951-2); lookup has no whole-blood code",
-      "file": "S04-sodium-arterial-bld.hl7"
+      "file": "C24-sodium-arterial-bld.hl7"
     },
-    "S05": {
-      "id": "S05",
+    "C25": {
+      "id": "C25",
       "obx3_text": "Na+, i-STAT cartridge",
       "group": "poc_blood_gas",
       "action": "escalate",
       "target": null,
       "why": "i-STAT POC cartridge tests whole blood, not serum/plasma (LOINC 2951-2); lookup has no POC code",
-      "file": "S05-sodium-istat-poc.hl7"
+      "file": "C25-sodium-istat-poc.hl7"
     },
-    "S06": {
-      "id": "S06",
+    "C26": {
+      "id": "C26",
       "obx3_text": "Sodium, ABG syringe",
       "group": "poc_blood_gas",
       "action": "escalate",
       "target": null,
       "why": "ABG syringe indicates arterial blood gas whole-blood specimen; lookup has no blood-gas code",
-      "file": "S06-sodium-abg-syringe.hl7"
+      "file": "C26-sodium-abg-syringe.hl7"
     },
-    "S07": {
-      "id": "S07",
+    "C27": {
+      "id": "C27",
       "obx3_text": "Sodium, spot urine",
       "group": "urine",
       "action": "escalate",
       "target": null,
       "why": "urine sodium (LOINC 2955-3) cannot map to serum/plasma sodium (2951-2); lookup has no urine code",
-      "file": "S07-sodium-spot-urine.hl7"
+      "file": "C27-sodium-spot-urine.hl7"
     },
-    "S08": {
-      "id": "S08",
+    "C28": {
+      "id": "C28",
       "obx3_text": "Potassium, WB",
       "group": "potassium_whole_blood",
       "action": "escalate",
       "target": null,
       "why": "whole-blood potassium (LOINC 6298-4) cannot map to serum/plasma potassium (2823-3); lookup has no whole-blood code",
-      "file": "S08-potassium-wb.hl7"
+      "file": "C28-potassium-wb.hl7"
     },
-    "S09": {
-      "id": "S09",
+    "C29": {
+      "id": "C29",
       "obx3_text": "Sodium, SST",
       "group": "serum_plasma_control",
       "action": "patch_mapping",
@@ -85,10 +85,10 @@
         "loinc": "2951-2"
       },
       "why": "SST indicates serum separator tube; serum sodium correctly maps to LOINC 2951-2",
-      "file": "S09-sodium-sst.hl7"
+      "file": "C29-sodium-sst.hl7"
     },
-    "S10": {
-      "id": "S10",
+    "C30": {
+      "id": "C30",
       "obx3_text": "Potassium, Li-Hep plasma",
       "group": "serum_plasma_control",
       "action": "patch_mapping",
@@ -97,10 +97,10 @@
         "loinc": "2823-3"
       },
       "why": "lithium heparin plasma is an accepted specimen for potassium; correctly maps to LOINC 2823-3",
-      "file": "S10-potassium-li-hep-plasma.hl7"
+      "file": "C30-potassium-li-hep-plasma.hl7"
     },
-    "S11": {
-      "id": "S11",
+    "C31": {
+      "id": "C31",
       "obx3_text": "Sodium, spun serum",
       "group": "serum_plasma_control",
       "action": "patch_mapping",
@@ -109,16 +109,16 @@
         "loinc": "2951-2"
       },
       "why": "spun serum indicates centrifuged serum specimen; correctly maps to LOINC 2951-2",
-      "file": "S11-sodium-spun-serum.hl7"
+      "file": "C31-sodium-spun-serum.hl7"
     },
-    "S12": {
-      "id": "S12",
+    "C32": {
+      "id": "C32",
       "obx3_text": "Sodium, unspecified specimen",
       "group": "ambiguous",
       "action": "escalate",
       "target": null,
       "why": "specimen source is unspecified; cannot safely map to serum/plasma without specimen confirmation",
-      "file": "S12-sodium-unspecified-specimen.hl7"
+      "file": "C32-sodium-unspecified-specimen.hl7"
     }
   }
 }
