@@ -16,7 +16,7 @@ An approved fix becomes a rule, so the next batch with the same change needs 0 L
 
 <div align="center">
 
-**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes)** · [Judging criteria](https://github.com/AntonYartsev/interop-ops-agent#how-this-meets-the-judging-criteria) · [Bonuses](https://github.com/AntonYartsev/interop-ops-agent#contest-technology-bonuses) · [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent)
+**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes)** · [Judging criteria](https://github.com/AntonYartsev/interop-ops-agent#how-this-meets-the-judging-criteria) · [Bonuses](https://github.com/AntonYartsev/interop-ops-agent#contest-technology-bonuses) · [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent) · [Article on DC](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it)
 
 </div>
 
@@ -208,6 +208,7 @@ More cases run only in LIVE: 5 blind cases in `cases/blind/` and the specimen pa
 | IPM package | [`module.xml`](module.xml) | `zpm "load /path/to/repo"`, then `IOA_DEMO=1` only if you want the demo page. Not published in the IPM registry yet |
 | Online demo | <https://ioa.antonyartsev.com/demo/> | LIVE model calls with a daily USD limit, not a static recording |
 | Community Opportunity idea | [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854) | Anomaly detection for an interoperability feed: the agent finds and explains the change, the production checks the fix |
+| Article on DC | [I built an AI agent for HL7 drift. Then 20 lines of rules matched it](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it) | The story of the project: killed ideas, the rules baseline, the specimen test the agent failed |
 
 The production also uses BPL, DTL, the lookup table `IOA.LabCodeMap` and Visual Trace.
 
