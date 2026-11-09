@@ -1,4 +1,4 @@
-<h1 align="center"><img src="images/icon.svg" height="21.5" alt=""> Interop Ops Agent</h1>
+<h1 align="center"><img src="https://raw.githubusercontent.com/AntonYartsev/interop-ops-agent/main/images/icon.svg" height="21.5" alt=""> Interop Ops Agent</h1>
 
 <p align="center">
 An IRIS Interoperability workflow where an AI Hub agent makes the decision: what to do with a batch of lab results after the lab quietly changed its HL7 feed.<br>
@@ -24,7 +24,7 @@ An approved fix becomes a rule, so the next batch with the same change needs 0 L
   Ideas Portal: <a href="https://ideas.intersystems.com/ideas/DPI-I-854">DPI-I-854: AI Log Analytics &amp; Predictive Anomaly Detection for Interoperability</a> (Community Opportunity)
 </p>
 
-![Demo page](images/demo-page.png)
+![Demo page](https://raw.githubusercontent.com/AntonYartsev/interop-ops-agent/main/images/demo-page.png)
 
 ## For judges: two minutes
 
@@ -100,9 +100,9 @@ flowchart LR
     D --> O["IOA.Deliver<br/>cases/out/ + cases/held/"]
 ```
 
-![Production](images/production.png)
+![Production](https://raw.githubusercontent.com/AntonYartsev/interop-ops-agent/main/images/production.png)
 
-![Visual Trace](images/visual-trace.png)
+![Visual Trace](https://raw.githubusercontent.com/AntonYartsev/interop-ops-agent/main/images/visual-trace.png)
 
 ## How the project uses AI Hub
 
@@ -131,7 +131,7 @@ The model makes mistakes. The recordings in `replay/` show them, and the product
 - **C02.** The model can answer "all fine" while an unknown code is in all 30 messages. The check rejects "pass" if anything in the batch is still unexplained.
 - **C18, whole-blood sodium.** The unit and values look exactly like normal sodium. Only the lab's text says "whole blood". The agent mapped it to the serum code, and no statistical check can see the difference. So the review card shows a specimen warning, and the human rejects the fix:
 
-![C18 review task](images/review-card.png)
+![C18 review task](https://raw.githubusercontent.com/AntonYartsev/interop-ops-agent/main/images/review-card.png)
 
 To be honest about the numbers: on our 12 demo cases a rules-only baseline also scores 12/12, and on the whole-blood test the agent was no better than the rules. This is why the design does not trust the agent. The checks and the human do. We tested it with blind cases, a pre-registered specimen test and LIVE runs.
 
@@ -244,7 +244,7 @@ Local URLs (web port 52273):
 | Workflow Inbox | <http://localhost:52273/csp/irisapp/EnsPortal.WFWorklist.zen?$NAMESPACE=IRISAPP> (user `IOA_REVIEWER_USER` / `IOA_REVIEWER_PASSWORD` from `.env`) |
 | Demo page | <http://localhost:52273/demo/> |
 
-![Workflow Inbox](images/workflow-inbox.png)
+![Workflow Inbox](https://raw.githubusercontent.com/AntonYartsev/interop-ops-agent/main/images/workflow-inbox.png)
 
 > [!NOTE]
 > **Known problems of build 109:**
