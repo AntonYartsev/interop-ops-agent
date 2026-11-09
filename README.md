@@ -16,7 +16,7 @@ An approved fix becomes a rule, so the next batch with the same change needs 0 L
 
 <div align="center">
 
-**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes)** · [Judging criteria](https://github.com/AntonYartsev/interop-ops-agent#how-this-meets-the-judging-criteria) · [Bonuses](https://github.com/AntonYartsev/interop-ops-agent#contest-technology-bonuses) · [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent) · [Article on DC](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it)
+**[Online demo (no install)](https://ioa.antonyartsev.com/demo/)** · **[For judges](https://github.com/AntonYartsev/interop-ops-agent#for-judges-two-minutes)** · [Judging criteria](https://github.com/AntonYartsev/interop-ops-agent#how-this-meets-the-judging-criteria) · [Bonuses](https://github.com/AntonYartsev/interop-ops-agent#contest-technology-bonuses) · [Quick start](https://github.com/AntonYartsev/interop-ops-agent#quick-start-replay-no-api-key) · [Open Exchange](https://openexchange.intersystems.com/package/Interop-Ops-Agent) · [Article 1 on DC](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it) · [Article 2 on DC](https://community.intersystems.com/post/seven-traps-ai-agent-what-i-learned-while-building-ai-agent-iris)
 
 </div>
 
@@ -208,7 +208,8 @@ More cases run only in LIVE: 5 blind cases in `cases/blind/` and the specimen pa
 | IPM package | [`module.xml`](module.xml) | `zpm "install interop-ops-agent"` from the IPM registry, or `zpm "load /path/to/repo"`. Set `IOA_DEMO=1` before the install only if you want the demo page |
 | Online demo | <https://ioa.antonyartsev.com/demo/> | LIVE model calls with a daily USD limit, not a static recording |
 | Community Opportunity idea | [DPI-I-854](https://ideas.intersystems.com/ideas/DPI-I-854) | Anomaly detection for an interoperability feed: the agent finds and explains the change, the production checks the fix |
-| Article on DC | [I built an AI agent for HL7 drift. Then 20 lines of rules matched it](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it) | The story of the project: killed ideas, the rules baseline, the specimen test the agent failed |
+| First article on DC | [I built an AI agent for HL7 drift. Then 20 lines of rules matched it](https://community.intersystems.com/post/i-built-ai-agent-hl7-drift-then-20-lines-rules-matched-it) | The story of the project: killed ideas, the rules baseline, the specimen test the agent failed |
+| Second article on DC | [Seven traps in %AI.Agent: what I learned while building an AI agent into IRIS](https://community.intersystems.com/post/seven-traps-ai-agent-what-i-learned-while-building-ai-agent-iris) | Seven `%AI.Agent` traps on build 154, the budget counter bug, the four filed issues |
 
 The production also uses BPL, DTL, the lookup table `IOA.LabCodeMap` and Visual Trace.
 
